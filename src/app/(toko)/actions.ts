@@ -112,6 +112,8 @@ export async function bayarSekarang(masuk: PesananMasuk): Promise<HasilBayar> {
       items,
       nama: masuk.nama.trim(),
       telepon: masuk.telepon.trim(),
+      // Midtrans mengirim struk ke email ini bila ada.
+      email: pesanan.email,
     });
 
     await execute(`UPDATE orders SET midtrans_order_id = ? WHERE id = ?`, [

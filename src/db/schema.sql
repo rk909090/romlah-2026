@@ -141,6 +141,7 @@ CREATE TABLE IF NOT EXISTS orders (
                  NOT NULL DEFAULT 'menunggu_konfirmasi',
   customer_name  VARCHAR(190)  NOT NULL,
   customer_phone VARCHAR(40)   NOT NULL,
+  customer_email VARCHAR(190)  NULL,
   address        TEXT          NULL,
   destination_id VARCHAR(64)   NULL,   -- id area Biteship
   destination_label VARCHAR(255) NULL,
@@ -203,3 +204,8 @@ ALTER TABLE orders ADD CONSTRAINT fk_orders_customer
 -- menerapkannya pada kolom yang sudah VARCHAR tidak mengubah apa pun.
 ALTER TABLE orders            MODIFY COLUMN destination_id VARCHAR(64) NULL;
 ALTER TABLE customer_addresses MODIFY COLUMN destination_id VARCHAR(64) NULL;
+
+-- Email pembeli, opsional. Disalin ke pesanan seperti nama dan telepon,
+-- mengikuti prinsip yang sama: nota lama tidak ikut berubah bila pelanggan
+-- kelak memperbarui datanya.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email VARCHAR(190) NULL AFTER customer_phone;

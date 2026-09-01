@@ -10,6 +10,8 @@ export type PesananMasuk = {
   items: ItemMasuk[];
   nama: string;
   telepon: string;
+  /** Opsional. Dipakai untuk struk Midtrans dan pemberitahuan kelak. */
+  email?: string;
   alamat: string;
   tujuan: Destination | null;
   kurirKode: string;
@@ -21,6 +23,7 @@ export type PesananMasuk = {
 export type PesananTersimpan = {
   orderNumber: string;
   orderId: number;
+  email: string | null;
   subtotal: number;
   shippingCost: number;
   total: number;
@@ -70,9 +73,13 @@ const DUPLIKAT = "ER_DUP_ENTRY";
 export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimpan> {
   const nama = masuk.nama.trim();
   const teleponBaku = normalkanTelepon(masuk.telepon);
+  const email = masuk.email?.trim() || null;
 
   if (!nama) throw new Error("Nama penerima wajib diisi.");
   if (teleponBaku.length < 10) throw new Error("Nomor WhatsApp tidak valid.");
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error("Format email tidak valid.");
+  }
   if (masuk.items.length === 0) throw new Error("Keranjang kosong.");
 
   // Gabungkan baris kembar dan buang jumlah yang tidak masuk akal.
@@ -133,9 +140,13 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
   /* ── Tulis dalam satu transaksi ─────────────────────────────────── */
   const tersimpan = await transaksi(async (tx) => {
     await tx.execute(
-      `INSERT INTO customers (phone, name) VALUES (?, ?)
-       ON DUPLICATE KEY UPDATE name = VALUES(name), last_order_at = NOW()`,
-      [teleponBaku, nama],
+      // Email yang sudah tersimpan tidak dihapus bila pesanan berikutnya
+      // dikirim tanpa email.
+      `INSERT INTO customers (phone, name, email) VALUES (?, ?, ?)
+       ON DUPLICATE KEY UPDATE name = VALUES(name),
+         email = COALESCE(VALUES(email), email),
+         last_order_at = NOW()`,
+      [teleponBaku, nama, email],
     );
     const pelanggan = await tx.query<{ id: number }>(
       `SELECT id FROM customers WHERE phone = ? LIMIT 1`,
@@ -183,9 +194,9 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
         const r = await tx.execute(
           `INSERT INTO orders
              (order_number, customer_id, channel, status, customer_name, customer_phone,
-              address, destination_id, destination_label, courier, courier_service, etd,
-              subtotal, shipping_cost, total, weight_gram)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              customer_email, address, destination_id, destination_label, courier,
+              courier_service, etd, subtotal, shipping_cost, total, weight_gram)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderNumber,
             customerId,
@@ -193,6 +204,7 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
             statusAwal,
             nama,
             teleponBaku,
+            email,
             masuk.alamat.trim() || null,
             masuk.tujuan?.id ?? null,
             masuk.tujuan?.label ?? null,
@@ -227,6 +239,7 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
   return {
     orderNumber: tersimpan.orderNumber,
     orderId: tersimpan.orderId,
+    email,
     subtotal,
     shippingCost,
     total,
@@ -248,6 +261,7 @@ export type PesananLengkap = {
   channel: string;
   customer_name: string;
   customer_phone: string;
+  customer_email: string | null;
   address: string | null;
   destination_label: string | null;
   courier: string | null;

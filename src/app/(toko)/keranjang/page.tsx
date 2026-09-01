@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { CartView } from "@/components/cart-view";
 import { getProducts } from "@/lib/catalog";
 import { midtransAktif } from "@/lib/midtrans";
+import { pakaiContoh } from "@/lib/shipping";
 
 export const metadata: Metadata = {
   title: "Keranjang",
@@ -19,7 +20,7 @@ export default async function Keranjang() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="font-display mb-6 text-3xl font-extrabold tracking-tight sm:text-4xl">Keranjang</h1>
-      <CartView products={products} bayarAktif={midtransAktif()} />
+      <CartView products={products} bayarAktif={midtransAktif()} ongkirContoh={pakaiContoh()} />
     </div>
   );
 }

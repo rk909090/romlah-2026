@@ -18,7 +18,7 @@ pnpm build      # produksi
 | `/` | Beranda: hero, chip kategori, produk unggulan, paket, alasan, outlet |
 | `/katalog` | 39 produk, penyaring kategori/harga/stok + pengurutan, semuanya lewat URL |
 | `/produk/[slug]` | Galeri, harga, berat, deskripsi, beli, JSON-LD `Product` |
-| `/keranjang` | Keranjang, alamat, ongkir, dua jalur checkout |
+| `/keranjang` | Keranjang, alamat lengkap, email opsional, ongkir, dua jalur checkout |
 | `/toko` | Alamat & jam buka tiga outlet |
 | `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
 | `/admin/*` | Panel admin — lihat bagian tersendiri di bawah |
@@ -190,6 +190,12 @@ diaktifkan.
 kosong (`No sufficient balance to call rates API`), bahkan pada kunci test
 mode. Galat itu muncul sebelum validasi apa pun — kalau tarif tiba-tiba
 berhenti muncul, periksa saldo lebih dulu.
+
+**Menguji di Windows dengan antivirus penyadap HTTPS:** `next dev` yang
+dijalankan tanpa `NODE_EXTRA_CA_CERTS` akan gagal menghubungi Biteship dengan
+`UNABLE_TO_VERIFY_LEAF_SIGNATURE`. Ini artefak mesin pengembang, bukan
+masalah kode; di Linux Hostinger tidak terjadi. Jalankan `pnpm dev` dari shell
+yang variabel itu sudah terisi.
 
 ## Pembayaran — Midtrans Snap
 

@@ -62,6 +62,7 @@ try {
     ],
     nama: "Penguji Integrasi",
     telepon: TEL,
+    email: "penguji@contoh.test",
     alamat: "Jl. Uji Integrasi No. 1",
     tujuan,
     kurirKode: dipilih.code,
@@ -80,6 +81,32 @@ try {
 
   const alamat = await query(`SELECT destination_id FROM customer_addresses WHERE phone = ?`, [BAKU]);
   cek("destination_id pada alamat pelanggan utuh", alamat[0]?.destination_id === tujuan.id, String(alamat[0]?.destination_id));
+
+  cek("email tersimpan di pesanan", db?.customer_email === "penguji@contoh.test", String(db?.customer_email));
+  const pel = await query(`SELECT email FROM customers WHERE phone = ?`, [BAKU]);
+  cek("email tersimpan di pelanggan", pel[0]?.email === "penguji@contoh.test", String(pel[0]?.email));
+  cek("alamat lengkap tersimpan", db?.address === "Jl. Uji Integrasi No. 1", String(db?.address));
+
+  // Email boleh kosong, tapi kalau diisi harus berbentuk email.
+  try {
+    await simpanPesanan({
+      items: [{ slug: produk[0].slug, qty: 1 }], nama: "X", telepon: TEL,
+      email: "bukan-email", alamat: "y", tujuan,
+      kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+    });
+    cek("email tidak valid ditolak", false, "justru tersimpan");
+  } catch (e) {
+    cek("email tidak valid ditolak", true, e.message.slice(0, 40));
+  }
+
+  const tanpaEmail = await simpanPesanan({
+    items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
+    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+  });
+  const pel2 = await query(`SELECT email FROM customers WHERE phone = ?`, [BAKU]);
+  cek("pesanan tanpa email tetap boleh", Boolean(tanpaEmail.orderNumber));
+  cek("email lama tidak terhapus oleh pesanan tanpa email", pel2[0]?.email === "penguji@contoh.test", String(pel2[0]?.email));
 
   // Layanan yang tidak ada dalam jawaban Biteship harus ditolak.
   try {

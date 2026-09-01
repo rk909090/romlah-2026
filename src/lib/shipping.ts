@@ -73,9 +73,15 @@ async function panggil<T>(path: string, init?: RequestInit): Promise<T> {
       cache: "no-store",
     });
   } catch (e) {
-    throw new ShippingError(
-      `Tidak bisa menghubungi layanan ongkir. ${e instanceof Error ? e.message : ""}`.trim(),
-    );
+    // fetch() membungkus penyebab sebenarnya di `cause`; tanpa ikut
+    // dilaporkan, seluruh kegagalan jaringan tampak sama saja sebagai
+    // "fetch failed" dan mustahil didiagnosis dari log.
+    const sebab = e instanceof Error && e.cause && typeof e.cause === "object" && "code" in e.cause
+      ? String((e.cause as { code?: unknown }).code)
+      : e instanceof Error
+        ? e.message
+        : String(e);
+    throw new ShippingError(`Tidak bisa menghubungi layanan ongkir (${sebab}).`, { cause: e });
   }
 
   const teks = await r.text();

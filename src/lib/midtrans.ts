@@ -82,9 +82,12 @@ export async function buatTransaksiSnap(p: PermintaanSnap): Promise<{ token: str
       cache: "no-store",
     });
   } catch (e) {
-    throw new MidtransError(
-      `Tidak bisa menghubungi Midtrans. ${e instanceof Error ? e.message : ""}`.trim(),
-    );
+    const sebab = e instanceof Error && e.cause && typeof e.cause === "object" && "code" in e.cause
+      ? String((e.cause as { code?: unknown }).code)
+      : e instanceof Error
+        ? e.message
+        : String(e);
+    throw new MidtransError(`Tidak bisa menghubungi Midtrans (${sebab}).`, { cause: e });
   }
 
   const teks = await r.text();

@@ -12,7 +12,16 @@ import { resolveLines, useCart } from "./cart-provider";
 
 type Tahap = "keranjang" | "konfirmasi";
 
-export function CartView({ products, bayarAktif }: { products: Product[]; bayarAktif: boolean }) {
+export function CartView({
+  products,
+  bayarAktif,
+  ongkirContoh,
+}: {
+  products: Product[];
+  bayarAktif: boolean;
+  /** true bila kredensial Biteship belum lengkap, sehingga tarif masih contoh. */
+  ongkirContoh: boolean;
+}) {
   const { lines, ready, ubahQty, hapus, kosongkan } = useCart();
   const items = useMemo(() => resolveLines(lines, products), [lines, products]);
 
@@ -30,6 +39,7 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
 
   const [nama, setNama] = useState("");
   const [telepon, setTelepon] = useState("");
+  const [email, setEmail] = useState("");
   const [alamat, setAlamat] = useState("");
   const [tahap, setTahap] = useState<Tahap>("keranjang");
   const [pesanan, setPesanan] = useState<Extract<HasilPesanan, { ok: true }> | null>(null);
@@ -95,12 +105,34 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
     };
   }, [tujuan, beratTotal]);
 
+  const kelasInput =
+    "mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none";
+  const kelasLabel = "text-xs font-semibold tracking-wide text-muted uppercase";
+
   const gratisOngkir = subtotal >= GRATIS_ONGKIR_MIN;
   const ongkir = pilihTarif ? (gratisOngkir && pilihTarif.code !== "pickup" ? 0 : pilihTarif.cost) : 0;
   const total = subtotal + ongkir;
   const kurang = Math.max(0, GRATIS_ONGKIR_MIN - subtotal);
 
-  const bisaPesan = items.length > 0 && tujuan && pilihTarif && nama.trim() && telepon.trim();
+  // Alamat lengkap wajib untuk pengiriman kurir: tanpa nama jalan, paketnya
+  // tidak bisa diantar. Ambil di toko tidak memerlukannya.
+  const perluAlamat = pilihTarif?.code !== "pickup";
+  const bisaPesan = Boolean(
+    items.length > 0 &&
+      tujuan &&
+      pilihTarif &&
+      nama.trim() &&
+      telepon.trim() &&
+      (!perluAlamat || alamat.trim()),
+  );
+
+  // Nama "kurang" sudah dipakai untuk selisih gratis ongkir di atas.
+  const belumLengkap: string[] = [];
+  if (!nama.trim()) belumLengkap.push("nama");
+  if (!telepon.trim()) belumLengkap.push("WhatsApp");
+  if (perluAlamat && !alamat.trim()) belumLengkap.push("alamat lengkap");
+  if (!tujuan) belumLengkap.push("kecamatan atau kode pos");
+  else if (!pilihTarif) belumLengkap.push("pilihan kurir");
 
   async function kirimPesanan() {
     if (!bisaPesan || mengirim) return;
@@ -110,6 +142,7 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
       items: lines,
       nama,
       telepon,
+      email,
       alamat,
       tujuan,
       kurirKode: pilihTarif!.code,
@@ -136,6 +169,7 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
       items: lines,
       nama,
       telepon,
+      email,
       alamat,
       tujuan,
       kurirKode: pilihTarif!.code,
@@ -298,36 +332,68 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <label className="block">
-              <span className="text-xs font-semibold tracking-wide text-muted uppercase">Nama penerima</span>
+              <span className={kelasLabel}>Nama penerima</span>
               <input
                 value={nama}
                 onChange={(e) => setNama(e.target.value)}
-                className="mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none"
+                autoComplete="name"
+                className={kelasInput}
                 placeholder="Nama lengkap"
               />
             </label>
             <label className="block">
-              <span className="text-xs font-semibold tracking-wide text-muted uppercase">Nomor WhatsApp</span>
+              <span className={kelasLabel}>Nomor WhatsApp</span>
               <input
                 value={telepon}
                 onChange={(e) => setTelepon(e.target.value)}
                 inputMode="tel"
-                className="mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none"
+                autoComplete="tel"
+                className={kelasInput}
                 placeholder="08…"
               />
             </label>
           </div>
 
           <label className="mt-3 block">
-            <span className="text-xs font-semibold tracking-wide text-muted uppercase">
-              Kelurahan atau kode pos
+            <span className={kelasLabel}>
+              Email <span className="normal-case">(opsional)</span>
             </span>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              type="email"
+              autoComplete="email"
+              className={kelasInput}
+              placeholder="untuk struk pembayaran"
+            />
+          </label>
+
+          {/* Alamat lengkap tidak lagi disembunyikan sampai tujuan dipilih.
+              Sebelumnya kolom ini baru muncul setelah kelurahan dipilih, dan
+              pembeli yang pencariannya gagal tidak pernah melihatnya. */}
+          <label className="mt-3 block">
+            <span className={kelasLabel}>Alamat lengkap</span>
+            <textarea
+              value={alamat}
+              onChange={(e) => setAlamat(e.target.value)}
+              rows={3}
+              autoComplete="street-address"
+              className={`${kelasInput} resize-y`}
+              placeholder="Nama jalan, nomor rumah, RT/RW, patokan"
+            />
+          </label>
+
+          <label className="mt-3 block">
+            <span className={kelasLabel}>Kecamatan atau kode pos</span>
             <input
               value={tujuan ? tujuan.label : q}
               onChange={(e) => ketikTujuan(e.target.value)}
-              className="mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none"
-              placeholder="Ketik “kemang” atau “12730”"
+              className={kelasInput}
+              placeholder="Ketik kode pos, misalnya 12730"
             />
+            <span className="mt-1.5 block text-xs text-muted">
+              Cari dengan kode pos. Pilih satu hasil untuk memunculkan pilihan kurir.
+            </span>
           </label>
 
           {!tujuan && hasil.length > 0 && (
@@ -349,17 +415,35 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
             </ul>
           )}
 
-          {tujuan && (
-            <label className="mt-3 block">
-              <span className="text-xs font-semibold tracking-wide text-muted uppercase">Alamat lengkap</span>
-              <textarea
-                value={alamat}
-                onChange={(e) => setAlamat(e.target.value)}
-                rows={2}
-                className="mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none"
-                placeholder="Nama jalan, nomor rumah, patokan"
-              />
-            </label>
+          {/* Galat ongkir ditampilkan di sini, bukan di dalam blok pilihan
+              kurir. Sebelumnya elemen ini berada di dalam blok yang baru
+              muncul setelah tujuan dipilih, sehingga kegagalan pencarian
+              tampil sebagai kesunyian total. */}
+          {galatOngkir && (
+            <p
+              role="alert"
+              className="mt-3 rounded-xl border border-jingga/40 bg-jingga-soft p-3 text-xs leading-relaxed text-ink-2"
+            >
+              {galatOngkir}
+            </p>
+          )}
+
+          {/* Tanpa ini, pencarian yang tidak menemukan apa pun hanya diam. */}
+          {!tujuan && q.trim().length >= 3 && hasil.length === 0 && !galatOngkir && (
+            <p className="mt-2 rounded-xl border border-line bg-sunken p-3 text-xs leading-relaxed text-ink-2">
+              Tidak ada wilayah yang cocok dengan “{q.trim()}”.{" "}
+              {ongkirContoh
+                ? "Layanan ongkir belum tersambung, jadi baru sedikit wilayah yang bisa dicari."
+                : "Coba kode pos lima angka, misalnya 12730."}
+            </p>
+          )}
+
+          {ongkirContoh && (
+            <p className="mt-3 rounded-xl border border-warn/40 bg-warn-soft p-3 text-xs leading-relaxed text-ink-2">
+              <b>Ongkir belum tersambung.</b> Kredensial Biteship belum disetel di server, jadi hanya
+              beberapa wilayah contoh yang bisa dicari dan tarifnya bukan tarif sungguhan. Pesanan tetap
+              bisa diselesaikan lewat WhatsApp.
+            </p>
           )}
 
           {tujuan && (
@@ -406,15 +490,6 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
                     );
                   })}
                 </ul>
-              )}
-
-              {galatOngkir && (
-                <p
-                  role="alert"
-                  className="mt-3 rounded-xl border border-jingga/40 bg-jingga-soft p-3 text-xs leading-relaxed text-ink-2"
-                >
-                  {galatOngkir}
-                </p>
               )}
 
               {tarifContoh && (
@@ -492,9 +567,7 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
           </div>
 
           <p className="mt-3 text-center text-xs text-muted">
-            {bisaPesan
-              ? "Keduanya membuat nomor pesanan yang sama"
-              : "Lengkapi nama, WhatsApp, dan alamat dulu"}
+            {bisaPesan ? "Keduanya membuat nomor pesanan yang sama" : `Lengkapi dulu: ${belumLengkap.join(", ")}`}
           </p>
 
           <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
