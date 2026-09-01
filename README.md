@@ -57,7 +57,8 @@ node scripts/db-smoke-test.mjs  # jalankan setiap kueri aplikasi terhadap DB
 node scripts/password-test.mjs  # uji hash & verifikasi kata sandi
 node --import ./scripts/ts-resolver.mjs scripts/order-test.mjs     # uji simpan pesanan
 node --import ./scripts/ts-resolver.mjs scripts/midtrans-test.mjs # uji tanda tangan & pemetaan status
-node scripts/rajaongkir-origin.mjs                                # cari ID outlet asal
+node --import ./scripts/ts-resolver.mjs scripts/biteship-test.mjs # uji pencarian area & tarif
+node scripts/biteship-origin.mjs 12530                            # cari ID area outlet asal
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan

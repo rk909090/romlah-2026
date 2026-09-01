@@ -17,6 +17,13 @@ for (const baris of fs.readFileSync(path.join(root, ".env.local"), "utf8").split
   process.env[baris.slice(0, i).trim()] ??= baris.slice(i + 1).trim();
 }
 
+// Uji ini memeriksa logika pesanan, bukan penyedia ongkir. Kredensial
+// Biteship sengaja dilepas agar lapisan ongkir memakai tarif contoh:
+// kalau tidak, kegagalan di pihak Biteship (saldo habis, jaringan putus)
+// akan tampak seperti kegagalan penyimpanan pesanan.
+delete process.env.BITESHIP_API_KEY;
+delete process.env.BITESHIP_ORIGIN_AREA_ID;
+
 // Impor dinamis: db.ts membangun kolam koneksi saat modul dimuat, jadi env
 // harus sudah terisi lebih dulu.
 const { simpanPesanan, getPesananByNomor, getBarisPesanan } = await import("../src/lib/orders.ts");
@@ -30,14 +37,14 @@ const cek = (nama, lulus, detail = "") => {
   console.log(`  ${lulus ? "OK   " : "GAGAL"} ${nama}${detail ? "  → " + detail : ""}`);
 };
 
+// Bentuk area Biteship: ID berupa string, hanya sampai tingkat kecamatan.
 const TUJUAN = {
-  id: 17471,
-  label: "KEMANG, MAMPANG PRAPATAN, JAKARTA SELATAN, DKI JAKARTA, 12730",
-  subdistrict_name: "KEMANG",
-  district_name: "MAMPANG PRAPATAN",
-  city_name: "JAKARTA SELATAN",
-  province_name: "DKI JAKARTA",
-  zip_code: "12730",
+  id: "IDNP6IDNC148IDND840IDZ12730",
+  label: "Mampang Prapatan, Jakarta Selatan, DKI Jakarta. 12730",
+  district: "Mampang Prapatan",
+  city: "Jakarta Selatan",
+  province: "DKI Jakarta",
+  postalCode: "12730",
 };
 
 // Ambil dua produk sungguhan beserta harga resminya.

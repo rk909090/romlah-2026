@@ -80,8 +80,7 @@ console.log(`Kategori: ${Object.keys(idKategori).join(", ")}`);
 /* ── 3. Produk + foto ─────────────────────────────────────────────── */
 const produk = JSON.parse(fs.readFileSync(path.join(root, "src/data/products.json"), "utf8"));
 
-let baru = 0;
-let diperbarui = 0;
+let diproses = 0;
 let fotoTotal = 0;
 
 for (const p of produk) {
@@ -104,9 +103,11 @@ for (const p of produk) {
       p.legacyId ?? null,
     ],
   );
-  // affectedRows: 1 = baris baru, 2 = baris diperbarui, 0 = tidak berubah
-  if (hasil.affectedRows === 1) baru++;
-  else diperbarui++;
+  // Jumlah baris terpengaruh dari ON DUPLICATE KEY UPDATE tidak bisa
+  // diandalkan untuk membedakan sisip dan perbarui, jadi tidak dilaporkan
+  // sebagai angka yang seolah pasti.
+  void hasil;
+  diproses++;
 
   const [[row]] = await conn.execute("SELECT id FROM products WHERE slug = ?", [p.slug]);
   for (const [i, img] of p.images.entries()) {
@@ -125,7 +126,7 @@ const [[hitung]] = await conn.query(
           (SELECT COUNT(*) FROM admin_users) admin`,
 );
 
-console.log(`Produk  : ${baru} baru, ${diperbarui} diperbarui`);
+console.log(`Produk  : ${diproses} baris diproses`);
 console.log(`Foto    : ${fotoTotal} baris diproses`);
 console.log("");
 console.log(`Isi basis data sekarang: ${hitung.produk} produk, ${hitung.foto} foto, ${hitung.admin} admin.`);

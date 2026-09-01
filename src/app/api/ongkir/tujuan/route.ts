@@ -5,8 +5,8 @@ import { cariTujuan, ShippingError } from "@/lib/shipping";
  * Pencarian tujuan pengiriman.
  *
  * Dibuat sebagai route handler, bukan dipanggil langsung dari komponen klien,
- * karena permintaan ke RajaOngkir membawa header `key` yang tidak boleh
- * sampai ke peramban.
+ * karena permintaan ke Biteship membawa header Authorization yang tidak
+ * boleh sampai ke peramban.
  */
 export async function GET(request: Request) {
   const q = new URL(request.url).searchParams.get("q") ?? "";

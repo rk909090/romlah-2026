@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS customer_addresses (
   recipient_name    VARCHAR(190)  NOT NULL,
   phone             VARCHAR(24)   NOT NULL,
   address           TEXT          NOT NULL,
-  destination_id    INT UNSIGNED  NULL,   -- id tujuan RajaOngkir
+  destination_id    VARCHAR(64)   NULL,   -- id area Biteship
   destination_label VARCHAR(255)  NULL,
   is_default        TINYINT(1)    NOT NULL DEFAULT 0,
   created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -142,7 +142,7 @@ CREATE TABLE IF NOT EXISTS orders (
   customer_name  VARCHAR(190)  NOT NULL,
   customer_phone VARCHAR(40)   NOT NULL,
   address        TEXT          NULL,
-  destination_id INT UNSIGNED  NULL,   -- id tujuan RajaOngkir
+  destination_id VARCHAR(64)   NULL,   -- id area Biteship
   destination_label VARCHAR(255) NULL,
   courier        VARCHAR(40)   NULL,
   courier_service VARCHAR(40)  NULL,
@@ -196,3 +196,10 @@ ALTER TABLE orders ADD KEY IF NOT EXISTS idx_orders_customer (customer_id);
 -- SESUDAH `FOREIGN KEY`, bukan sesudah `ADD CONSTRAINT`.
 ALTER TABLE orders ADD CONSTRAINT fk_orders_customer
   FOREIGN KEY IF NOT EXISTS (customer_id) REFERENCES customers (id) ON DELETE SET NULL;
+
+-- ── Pindah dari RajaOngkir ke Biteship ────────────────────────────────
+-- ID area Biteship berupa string ("IDNP6IDNC148IDND837IDZ12530"), bukan
+-- angka seperti ID tujuan RajaOngkir. MODIFY aman dijalankan berulang:
+-- menerapkannya pada kolom yang sudah VARCHAR tidak mengubah apa pun.
+ALTER TABLE orders            MODIFY COLUMN destination_id VARCHAR(64) NULL;
+ALTER TABLE customer_addresses MODIFY COLUMN destination_id VARCHAR(64) NULL;

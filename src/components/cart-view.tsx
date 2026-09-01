@@ -419,7 +419,7 @@ export function CartView({ products, bayarAktif }: { products: Product[]; bayarA
 
               {tarifContoh && (
                 <p className="mt-3 rounded-xl border border-warn/40 bg-warn-soft p-3 text-xs leading-relaxed text-ink-2">
-                  <b>Tarif contoh.</b> Angka ini belum berasal dari RajaOngkir — masih menunggu API key. Alur dan
+                  <b>Tarif contoh.</b> Angka ini belum berasal dari Biteship — kredensial ongkir belum lengkap. Alur dan
                   tampilannya sudah final.
                 </p>
               )}

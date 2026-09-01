@@ -1,23 +1,28 @@
 /**
- * Lapisan ongkir — RajaOngkir V2 (Komerce).
+ * Lapisan ongkir — Biteship.
  *
- *   GET  https://rajaongkir.komerce.id/api/v1/destination/domestic-destination?search=
- *   POST https://rajaongkir.komerce.id/api/v1/calculate/domestic-cost
- *        origin, destination, weight (gram), courier
- *   header: key: <API_KEY>
+ * Diverifikasi langsung terhadap API mereka:
+ *   GET  https://api.biteship.com/v1/maps/areas?countries=ID&input=<q>&type=single
+ *   POST https://api.biteship.com/v1/rates/couriers
+ *   header: Authorization: <api key>   (mentah, tanpa "Bearer")
  *
  * Seluruh pemanggilan terjadi di server. API key tidak pernah menyentuh
  * peramban — komponen klien memanggil route handler di /api/ongkir/*.
+ *
+ * Berbeda dari RajaOngkir, ID area Biteship adalah STRING seperti
+ * "IDNP6IDNC148IDND837IDZ12530", bukan angka. Kolom destination_id di basis
+ * data ikut berubah jadi VARCHAR karenanya.
  */
 
 export type Destination = {
-  id: number;
+  /** ID area Biteship, contoh: "IDNP6IDNC148IDND837IDZ12530". */
+  id: string;
+  /** Contoh: "Mampang Prapatan, Jakarta Selatan, DKI Jakarta. 12730" */
   label: string;
-  subdistrict_name: string;
-  district_name: string;
-  city_name: string;
-  province_name: string;
-  zip_code: string;
+  district: string;
+  city: string;
+  province: string;
+  postalCode: string;
 };
 
 export type ShippingRate = {
@@ -29,41 +34,41 @@ export type ShippingRate = {
   etd: string;
 };
 
-const BASE = "https://rajaongkir.komerce.id/api/v1";
+const BASE = "https://api.biteship.com";
 
 /**
- * Kurir yang diminta. Yang benar-benar tersedia bergantung pada paket
- * langganan RajaOngkir; kurir di luar paket sekadar tidak muncul di hasil.
+ * Kurir yang diminta. Yang benar-benar tersedia bergantung pada akun
+ * Biteship; kurir di luar daftar akun sekadar tidak muncul di hasil.
  */
-const KURIR = process.env.RAJAONGKIR_COURIERS ?? "jne:sicepat:jnt:pos:tiki";
+const KURIR = process.env.BITESHIP_COURIERS ?? "jne,sicepat,jnt,anteraja,pos,tiki,ninja";
 
-const kunci = () => process.env.RAJAONGKIR_API_KEY?.trim() || "";
+const kunci = () => process.env.BITESHIP_API_KEY?.trim() || "";
 
-/** Titik asal pengiriman: outlet Tanjung Barat. Lihat scripts/rajaongkir-origin.mjs. */
-export const ORIGIN_ID = Number(process.env.RAJAONGKIR_ORIGIN_ID ?? 0);
+/** Area asal pengiriman: outlet Tanjung Barat. Lihat scripts/biteship-origin.mjs. */
+export const ORIGIN_AREA_ID = process.env.BITESHIP_ORIGIN_AREA_ID?.trim() || "";
 
 export const ORIGIN_LABEL = "Tanjung Barat, Jagakarsa, Jakarta Selatan";
 
 /**
  * Apakah lapisan ini masih memakai data contoh.
  *
- * Bernilai true hanya bila API key atau ID asal belum disetel. Kalau
- * keduanya ada, tarif SELALU dari RajaOngkir — kegagalan dilaporkan sebagai
+ * Bernilai true hanya bila API key atau ID area asal belum disetel. Kalau
+ * keduanya ada, tarif SELALU dari Biteship — kegagalan dilaporkan sebagai
  * galat, tidak pernah diam-diam diganti angka karangan. Ongkir palsu di
  * produksi berarti uang yang salah.
  */
 export function pakaiContoh(): boolean {
-  return !kunci() || !ORIGIN_ID;
+  return !kunci() || !ORIGIN_AREA_ID;
 }
 
 export class ShippingError extends Error {}
 
-async function panggil(path: string, init?: RequestInit): Promise<{ meta?: { message?: string }; data?: unknown }> {
+async function panggil<T>(path: string, init?: RequestInit): Promise<T> {
   let r: Response;
   try {
     r = await fetch(`${BASE}${path}`, {
       ...init,
-      headers: { key: kunci(), ...(init?.headers ?? {}) },
+      headers: { Authorization: kunci(), ...(init?.headers ?? {}) },
       // Tarif berubah; jangan sampai tersimpan di cache fetch Next.
       cache: "no-store",
     });
@@ -74,15 +79,15 @@ async function panggil(path: string, init?: RequestInit): Promise<{ meta?: { mes
   }
 
   const teks = await r.text();
-  let j: { meta?: { message?: string }; data?: unknown };
+  let j: { success?: boolean; error?: string } & T;
   try {
     j = JSON.parse(teks) as typeof j;
   } catch {
     throw new ShippingError(`Jawaban layanan ongkir tidak terbaca (HTTP ${r.status}).`);
   }
 
-  if (!r.ok) {
-    throw new ShippingError(j.meta?.message ?? `Layanan ongkir menolak permintaan (HTTP ${r.status}).`);
+  if (!r.ok || j.success === false) {
+    throw new ShippingError(j.error ?? `Layanan ongkir menolak permintaan (HTTP ${r.status}).`);
   }
   return j;
 }
@@ -90,44 +95,41 @@ async function panggil(path: string, init?: RequestInit): Promise<{ meta?: { mes
 /* ── Data contoh, hanya dipakai saat kredensial belum disetel ────────── */
 const CONTOH_TUJUAN: Destination[] = [
   {
-    id: 17471,
-    label: "KEMANG, MAMPANG PRAPATAN, JAKARTA SELATAN, DKI JAKARTA, 12730",
-    subdistrict_name: "KEMANG",
-    district_name: "MAMPANG PRAPATAN",
-    city_name: "JAKARTA SELATAN",
-    province_name: "DKI JAKARTA",
-    zip_code: "12730",
+    id: "IDNP6IDNC148IDND840IDZ12730",
+    label: "Mampang Prapatan, Jakarta Selatan, DKI Jakarta. 12730",
+    district: "Mampang Prapatan",
+    city: "Jakarta Selatan",
+    province: "DKI Jakarta",
+    postalCode: "12730",
   },
   {
-    id: 17392,
-    label: "TANJUNG BARAT, JAGAKARSA, JAKARTA SELATAN, DKI JAKARTA, 12530",
-    subdistrict_name: "TANJUNG BARAT",
-    district_name: "JAGAKARSA",
-    city_name: "JAKARTA SELATAN",
-    province_name: "DKI JAKARTA",
-    zip_code: "12530",
+    id: "IDNP6IDNC148IDND837IDZ12530",
+    label: "Jagakarsa, Jakarta Selatan, DKI Jakarta. 12530",
+    district: "Jagakarsa",
+    city: "Jakarta Selatan",
+    province: "DKI Jakarta",
+    postalCode: "12530",
   },
   {
-    id: 27103,
-    label: "GUBENG, GUBENG, SURABAYA, JAWA TIMUR, 60281",
-    subdistrict_name: "GUBENG",
-    district_name: "GUBENG",
-    city_name: "SURABAYA",
-    province_name: "JAWA TIMUR",
-    zip_code: "60281",
-  },
-  {
-    id: 12009,
-    label: "SUKAJADI, SUKAJADI, BANDUNG, JAWA BARAT, 40162",
-    subdistrict_name: "SUKAJADI",
-    district_name: "SUKAJADI",
-    city_name: "BANDUNG",
-    province_name: "JAWA BARAT",
-    zip_code: "40162",
+    id: "IDNP11IDNC434IDND5427IDZ60281",
+    label: "Gubeng, Surabaya, Jawa Timur. 60281",
+    district: "Gubeng",
+    city: "Surabaya",
+    province: "Jawa Timur",
+    postalCode: "60281",
   },
 ];
 
 /* ── Pencarian tujuan ────────────────────────────────────────────────── */
+type AreaBiteship = {
+  id: string;
+  name: string;
+  administrative_division_level_1_name?: string;
+  administrative_division_level_2_name?: string;
+  administrative_division_level_3_name?: string;
+  postal_code?: number | string;
+};
+
 export async function cariTujuan(q: string): Promise<Destination[]> {
   const term = q.trim();
   if (term.length < 3) return [];
@@ -136,30 +138,61 @@ export async function cariTujuan(q: string): Promise<Destination[]> {
     return CONTOH_TUJUAN.filter((d) => d.label.toLowerCase().includes(term.toLowerCase())).slice(0, 8);
   }
 
-  const j = await panggil(
-    `/destination/domestic-destination?search=${encodeURIComponent(term)}&limit=10&offset=0`,
+  const j = await panggil<{ areas?: AreaBiteship[] }>(
+    `/v1/maps/areas?countries=ID&input=${encodeURIComponent(term)}&type=single`,
   );
-  const data = Array.isArray(j.data) ? (j.data as Destination[]) : [];
-  return data.map((d) => ({
-    id: Number(d.id),
-    label: d.label,
-    subdistrict_name: d.subdistrict_name,
-    district_name: d.district_name,
-    city_name: d.city_name,
-    province_name: d.province_name,
-    zip_code: d.zip_code,
+
+  return (j.areas ?? []).slice(0, 10).map((a) => ({
+    id: String(a.id),
+    label: a.name,
+    // Biteship hanya turun sampai kecamatan (level 3); tidak ada kelurahan.
+    district: a.administrative_division_level_3_name ?? "",
+    city: a.administrative_division_level_2_name ?? "",
+    province: a.administrative_division_level_1_name ?? "",
+    postalCode: String(a.postal_code ?? ""),
   }));
 }
 
 /* ── Hitung ongkir ───────────────────────────────────────────────────── */
-type TarifMentah = {
-  name?: string;
-  code?: string;
-  service?: string;
+type TarifBiteship = {
+  courier_code?: string;
+  courier_name?: string;
+  courier_service_code?: string;
+  courier_service_name?: string;
   description?: string;
-  cost?: number | string;
-  etd?: string;
+  duration?: string;
+  shipment_duration_range?: string;
+  shipment_duration_unit?: string;
+  shipping_fee?: number;
+  shipping_fee_discount?: number;
+  shipping_fee_surcharge?: number;
+  price?: number;
 };
+
+/**
+ * Biaya yang ditagihkan ke pembeli.
+ *
+ * Sengaja TIDAK memakai `price` mentah. Pada contoh resmi Biteship,
+ * `price` (11000) sama dengan `shipping_fee` (9000) ditambah
+ * `cash_on_delivery_fee` (2000) — padahal toko ini tidak melayani COD.
+ * Memakai `price` berarti membebani pembeli biaya layanan yang tidak
+ * dipakainya.
+ *
+ * Yang dipakai: ongkos kirim ditambah biaya tambahan, dikurangi potongan.
+ * Kalau ketiganya tidak ada, barulah jatuh ke `price`.
+ *
+ * PERLU DICOCOKKAN dengan tagihan Biteship sungguhan begitu saldo terisi.
+ */
+function biaya(t: TarifBiteship): number {
+  const dasar = Number(t.shipping_fee ?? NaN);
+  if (Number.isFinite(dasar)) {
+    return Math.max(
+      0,
+      Math.round(dasar + Number(t.shipping_fee_surcharge ?? 0) - Number(t.shipping_fee_discount ?? 0)),
+    );
+  }
+  return Math.round(Number(t.price ?? 0));
+}
 
 export async function hitungOngkir(tujuan: Destination, beratGram: number): Promise<ShippingRate[]> {
   // Kurir menagih per kilogram yang dibulatkan ke atas; kirim minimal 1 kg
@@ -168,37 +201,40 @@ export async function hitungOngkir(tujuan: Destination, beratGram: number): Prom
 
   if (pakaiContoh()) {
     const kg = Math.ceil(berat / 1000);
-    const luarJakarta = !tujuan.province_name.includes("DKI JAKARTA");
+    const luarJakarta = !tujuan.province.toUpperCase().includes("DKI JAKARTA");
     const f = luarJakarta ? 2.4 : 1;
     return [
-      { code: "jne", name: "JNE", service: "REG", description: "Layanan reguler", cost: Math.round(10_000 * f) * kg, etd: luarJakarta ? "2-3 hari" : "1-2 hari" },
-      { code: "jnt", name: "J&T", service: "EZ", description: "Layanan ekonomis", cost: Math.round(9_000 * f) * kg, etd: luarJakarta ? "3-4 hari" : "2 hari" },
-      { code: "sicepat", name: "SiCepat", service: "BEST", description: "Besok sampai tujuan", cost: Math.round(24_000 * f) * kg, etd: luarJakarta ? "2 hari" : "1 hari" },
+      { code: "jne", name: "JNE", service: "REG", description: "Layanan reguler", cost: Math.round(10_000 * f) * kg, etd: luarJakarta ? "2 - 3 days" : "1 - 2 days" },
+      { code: "jnt", name: "J&T", service: "EZ", description: "Layanan ekonomis", cost: Math.round(9_000 * f) * kg, etd: luarJakarta ? "3 - 4 days" : "2 days" },
+      { code: "sicepat", name: "SiCepat", service: "BEST", description: "Besok sampai tujuan", cost: Math.round(24_000 * f) * kg, etd: luarJakarta ? "2 days" : "1 day" },
     ];
   }
 
-  const body = new URLSearchParams({
-    origin: String(ORIGIN_ID),
-    destination: String(tujuan.id),
-    weight: String(berat),
-    courier: KURIR,
-  });
-
-  const j = await panggil("/calculate/domestic-cost", {
+  const j = await panggil<{ pricing?: TarifBiteship[] }>("/v1/rates/couriers", {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      origin_area_id: ORIGIN_AREA_ID,
+      destination_area_id: tujuan.id,
+      couriers: KURIR,
+      // Biteship menghitung dari daftar barang, bukan satu angka berat.
+      // Satu baris ringkas sudah cukup karena yang menentukan tarif hanya
+      // berat totalnya.
+      items: [{ name: "Oleh-oleh", value: 0, weight: berat, quantity: 1 }],
+    }),
   });
 
-  const data = Array.isArray(j.data) ? (j.data as TarifMentah[]) : [];
-  return data
+  return (j.pricing ?? [])
     .map((t) => ({
-      code: String(t.code ?? "").toLowerCase(),
-      name: String(t.name ?? t.code ?? "").trim(),
-      service: String(t.service ?? "").trim(),
-      description: String(t.description ?? "").trim(),
-      cost: Number(t.cost ?? 0),
-      etd: String(t.etd ?? "").trim() || "—",
+      code: String(t.courier_code ?? "").toLowerCase(),
+      name: String(t.courier_name ?? t.courier_code ?? "").trim(),
+      service: String(t.courier_service_code ?? "").trim(),
+      description: String(t.courier_service_name ?? t.description ?? "").trim(),
+      cost: biaya(t),
+      etd:
+        String(t.duration ?? "").trim() ||
+        [t.shipment_duration_range, t.shipment_duration_unit].filter(Boolean).join(" ") ||
+        "—",
     }))
     .filter((t) => t.cost > 0 && t.service)
     .sort((a, b) => a.cost - b.cost);
