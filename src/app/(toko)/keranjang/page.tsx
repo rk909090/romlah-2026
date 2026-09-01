@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// Katalog dibaca dari basis data saat permintaan; build tidak menyentuh DB.
+export const dynamic = "force-dynamic";
+
 export default async function Keranjang() {
   // Katalog dikirim sekali dari server; keranjang sendiri hidup di browser
   // sampai database aktif.

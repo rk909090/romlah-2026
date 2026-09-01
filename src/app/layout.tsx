@@ -1,9 +1,5 @@
 import type { Metadata } from "next";
 import { Gabarito, Plus_Jakarta_Sans } from "next/font/google";
-import { BottomNav } from "@/components/bottom-nav";
-import { CartProvider } from "@/components/cart-provider";
-import { SiteFooter } from "@/components/site-footer";
-import { SiteHeader } from "@/components/site-header";
 import { SITE } from "@/data/site";
 import "./globals.css";
 
@@ -36,18 +32,17 @@ export const metadata: Metadata = {
   },
 };
 
+/**
+ * Layout akar sengaja hanya memuat html, body, dan font.
+ *
+ * Chrome toko (header, footer, tab bar) ada di grup rute (toko), dan panel
+ * admin punya kerangkanya sendiri. Tanpa pemisahan ini, halaman admin akan
+ * ikut mewarisi header dan keranjang belanja.
+ */
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="id" className={`${jakarta.variable} ${gabarito.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col">
-        <CartProvider>
-          <SiteHeader />
-          {/* Ruang bawah menghindari tab bar yang menempel di layar kecil. */}
-          <main className="flex-1 pb-24 md:pb-0">{children}</main>
-          <SiteFooter />
-          <BottomNav />
-        </CartProvider>
-      </body>
+      <body className="min-h-full">{children}</body>
     </html>
   );
 }

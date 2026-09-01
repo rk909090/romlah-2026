@@ -1,13 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
-import { CATEGORIES, countByCategory, getProducts } from "@/lib/catalog";
+import { countByCategory, getCategories, getProducts } from "@/lib/catalog";
 import type { CategorySlug, Product } from "@/lib/types";
 
 export const metadata: Metadata = {
   title: "Katalog",
   description: "Semua camilan, minuman, dan paket oleh-oleh khas Betawi dari Romlah.",
 };
+
+// Katalog dibaca dari basis data saat permintaan; build tidak menyentuh DB.
+export const dynamic = "force-dynamic";
 
 type Urut = "nama" | "termurah" | "termahal" | "teringan";
 
@@ -63,7 +66,10 @@ export default async function Katalog({
   searchParams: Promise<{ kategori?: string; q?: string; urut?: string; harga?: string; stok?: string }>;
 }) {
   const sp = await searchParams;
-  const kategori = CATEGORIES.some((c) => c.slug === sp.kategori) ? (sp.kategori as CategorySlug) : undefined;
+  const daftarKategori = await getCategories();
+  const kategori = daftarKategori.some((c) => c.slug === sp.kategori)
+    ? (sp.kategori as CategorySlug)
+    : undefined;
   const q = sp.q?.trim() ?? "";
   const urut = (["nama", "termurah", "termahal", "teringan"] as const).includes(sp.urut as Urut)
     ? (sp.urut as Urut)
@@ -92,10 +98,10 @@ export default async function Katalog({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <h1 className="font-display text-3xl font-extrabold tracking-tight sm:text-4xl">
-        {kategori ? CATEGORIES.find((c) => c.slug === kategori)!.name : "Katalog"}
+        {kategori ? daftarKategori.find((c) => c.slug === kategori)!.name : "Katalog"}
       </h1>
       <p className="mt-2 text-sm text-ink-2">
-        {kategori ? CATEGORIES.find((c) => c.slug === kategori)!.blurb : "Semua produk Romlah dalam satu halaman."}
+        {kategori ? daftarKategori.find((c) => c.slug === kategori)!.blurb : "Semua produk Romlah dalam satu halaman."}
       </p>
 
       {/* Kategori */}
@@ -103,7 +109,7 @@ export default async function Katalog({
         <Chip aktif={!kategori} href={href(now, { kategori: undefined })}>
           Semua · {semua.length}
         </Chip>
-        {CATEGORIES.map((c) => (
+        {daftarKategori.map((c) => (
           <Chip key={c.slug} aktif={kategori === c.slug} href={href(now, { kategori: c.slug })}>
             {c.name} · {jumlah[c.slug]}
           </Chip>

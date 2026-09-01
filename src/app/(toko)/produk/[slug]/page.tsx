@@ -5,16 +5,20 @@ import { BuyBar } from "@/components/buy-bar";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { SITE } from "@/data/site";
-import { getProduct, getProducts, getRelated } from "@/lib/catalog";
+import { getProduct, getRelated } from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
 
-/** 39 produk — seluruh katalog dibangun statis saat build. */
-export async function generateStaticParams() {
-  const products = await getProducts();
-  return products.map((p) => ({ slug: p.slug }));
-}
+/**
+ * Dirender saat permintaan, bukan dibangun statis.
+ *
+ * Katalog kini berasal dari MariaDB, dan build di Hostinger belum tentu
+ * memegang kredensial basis data. Pramuat statis akan membuat seluruh
+ * build gagal hanya karena tahap itu. Dengan force-dynamic, build tidak
+ * pernah menyentuh basis data sama sekali.
+ */
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;

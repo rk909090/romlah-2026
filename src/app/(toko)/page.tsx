@@ -2,7 +2,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
 import { SITE, TESTIMONIALS } from "@/data/site";
-import { CATEGORIES, countByCategory, getFeatured, getHeroProduct, getPackages, getProducts } from "@/lib/catalog";
+import {
+  countByCategory,
+  getCategories,
+  getFeatured,
+  getHeroProduct,
+  getPackages,
+  getProducts,
+} from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
 
 const ALASAN = [
@@ -11,12 +18,16 @@ const ALASAN = [
   { judul: "Bayar sesukamu", isi: "Transfer, QRIS, atau pesan langsung lewat WhatsApp." },
 ];
 
+// Katalog dibaca dari basis data saat permintaan; build tidak menyentuh DB.
+export const dynamic = "force-dynamic";
+
 export default async function Beranda() {
-  const [semua, unggulan, paket, hero] = await Promise.all([
+  const [semua, unggulan, paket, hero, kategori] = await Promise.all([
     getProducts(),
     getFeatured(8),
     getPackages(),
     getHeroProduct(),
+    getCategories(),
   ]);
   const jumlah = countByCategory(semua);
   const waHalo = `https://wa.me/${SITE.whatsapp.number}?text=${encodeURIComponent(
@@ -87,7 +98,7 @@ export default async function Beranda() {
           >
             Semua · {semua.length}
           </Link>
-          {CATEGORIES.map((c) => (
+          {kategori.map((c) => (
             <Link
               key={c.slug}
               href={`/katalog?kategori=${c.slug}`}

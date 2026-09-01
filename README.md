@@ -1,7 +1,7 @@
 # romlah-web
 
-Bangun ulang romlah.com dengan Next.js. Tahap ini **UI saja** — database belum
-disambungkan, sesuai permintaan.
+Bangun ulang romlah.com dengan Next.js. Toko dan panel admin sudah berjalan di
+atas MariaDB. Pembayaran Midtrans dan ongkir RajaOngkir menunggu API key.
 
 ## Menjalankan
 
@@ -21,14 +21,75 @@ pnpm build      # produksi
 | `/keranjang` | Keranjang, alamat, ongkir, dua jalur checkout |
 | `/toko` | Alamat & jam buka tiga outlet |
 | `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
+| `/admin/*` | Panel admin — lihat bagian tersendiri di bawah |
 
-Semua halaman produk dibangun statis saat `build` (39 halaman SSG).
+Halaman toko **dirender saat permintaan**, bukan dibangun statis. Katalog kini
+berasal dari MariaDB, dan build di Hostinger belum tentu memegang kredensial
+basis data; pramuat statis akan membuat seluruh build gagal hanya karena tahap
+itu. Kalau nanti kredensial dipastikan tersedia saat build, halaman produk bisa
+dikembalikan ke SSG untuk mempercepatnya.
+
+## Basis data
+
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — tujuh tabel:
+`admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
+`orders`, `order_items`.
+
+Variabel lingkungan yang wajib ada (lihat `.env.example`): `DATABASE_HOST`,
+`DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`.
+Untuk produksi, setel di panel Hostinger. **Jangan** menaruh nilainya di berkas
+yang ikut ter-commit — `.env*` diabaikan git, kecuali `.env.example`.
+
+```bash
+node scripts/db-setup.mjs      # terapkan skema + isi 39 produk (aman diulang)
+node scripts/db-smoke-test.mjs # jalankan setiap kueri aplikasi terhadap DB
+node scripts/password-test.mjs # uji hash & verifikasi kata sandi
+```
+
+**Kuota Hostinger untuk akun basis data ini: 500 koneksi per jam, maksimum 100
+koneksi bersamaan, statement maksimum 180 detik.** Karena itu `src/lib/db.ts`
+memakai satu kolam koneksi kecil (limit 5) yang disimpan di `globalThis` — tanpa
+itu, hot reload akan meninggalkan kolam yatim dan menghabiskan kuota.
+
+Tanpa ORM, dengan sengaja. `drizzle-kit` bergantung pada esbuild dan Prisma
+mengunduh engine, keduanya lewat skrip pascapasang — persis jenis masalah yang
+sudah beberapa kali menggagalkan build di Hostinger. Kueri ditulis sebagai SQL
+berparameter; tipe parameternya dipersempit lewat `SqlParam`.
+
+## Panel admin
+
+Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
+`admin/(panel)` — panel tidak mewarisi header, footer, maupun keranjang toko.
+
+| Rute | Isi |
+| --- | --- |
+| `/admin/setup` | Membuat admin pertama. Menutup diri begitu ada satu admin |
+| `/admin/login` | Masuk |
+| `/admin` | Dasbor: produk aktif, stok habis, produk tanpa foto |
+| `/admin/produk` | Daftar, cari, tapis kategori/status, arsipkan |
+| `/admin/produk/baru`, `/admin/produk/[id]` | Buat dan ubah produk |
+| `/admin/pesanan` | Daftar pesanan (masih kosong) |
+| `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
+
+Beberapa keputusan keamanan:
+
+- **Kata sandi admin pertama tidak pernah lewat berkas atau skrip.** Dibuat
+  lewat `/admin/setup`, yang menolak jalan begitu satu admin sudah ada — dijaga
+  di server action juga, bukan sekadar disembunyikan halamannya.
+- **scrypt bawaan Node**, bukan bcrypt, agar tidak ada binding native.
+  Parameternya ikut disimpan di dalam hash sehingga bisa dinaikkan kelak.
+- **Token sesi disimpan sebagai hash SHA-256**, bukan nilai aslinya. Isi tabel
+  yang bocor tidak cukup untuk membajak sesi.
+- Pesan galat saat masuk sama untuk email tak dikenal maupun sandi salah, dan
+  ada pembatas 5 percobaan gagal per email selama 10 menit.
+- Produk **diarsipkan, tidak dihapus** — baris pesanan menunjuk ke produk lewat
+  foreign key.
 
 ## Data
 
 `src/data/products.json` — hasil migrasi dari WooCommerce lama lewat Store API
-publik. 39 produk, 66 foto di `public/produk/`. Foto duplikat yang ada di situs
-lama sudah disaring.
+publik, sekarang dipakai sebagai sumber seed untuk basis data. 39 produk, 66
+foto di `public/produk/`. Foto duplikat yang ada di situs lama sudah disaring.
 
 **Satu koreksi data:** `Sagon Bakar Romlah` (legacyId 31526) tercatat beratnya
 `300` kg di WooCommerce — hampir pasti salah entri untuk 300 gram. Nilai itu
@@ -45,16 +106,18 @@ Ditandai jelas di kode dan di layar, bukan disembunyikan:
   pemanggilannya sudah lewat route handler supaya API key tidak bocor ke browser.
 - **Pembayaran** — tombol "Bayar sekarang" sengaja dinonaktifkan sampai kunci
   Midtrans ada.
-- **Nomor pesanan** — dibuat di browser, belum tersimpan. Harus pindah ke server
-  begitu database aktif.
+- **Nomor pesanan** — masih dibuat di browser dan belum tersimpan, meski tabel
+  `orders` sudah siap. Menyambungkannya adalah langkah berikutnya: setiap
+  pesanan WhatsApp akan tercatat lengkap dan muncul di `/admin/pesanan`.
 - **Testimoni** (`TESTIMONIALS` di `src/data/site.ts`) — sengaja kosong.
   Bagiannya tidak dirender selama larik itu kosong. Tidak diisi kutipan karangan.
 
-## Seam untuk database
+## Lapisan data
 
-Halaman tidak pernah menyentuh sumber data langsung. Semuanya lewat
-`src/lib/catalog.ts`, dan seluruh fungsinya sudah `async` supaya penggantian ke
-database tidak mengubah tanda tangan fungsi di pemanggilnya.
+Halaman tidak pernah menyentuh basis data langsung. Baca katalog lewat
+`src/lib/catalog.ts`, tulis dari admin lewat `src/lib/admin/products.ts`.
+Pemisahan itu terbukti berguna: pindah dari JSON ke MariaDB hanya mengubah isi
+`catalog.ts`, tanpa menyentuh satu pun komponen.
 
 Keranjang ada di `localStorage` lewat `useSyncExternalStore`
 (`src/components/cart-provider.tsx`), tersinkron antar tab.

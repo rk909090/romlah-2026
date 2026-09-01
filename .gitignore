@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# berkas contoh tanpa nilai rahasia — harus ikut ter-commit
+!.env.example
