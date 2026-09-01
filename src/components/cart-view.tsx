@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { GRATIS_ONGKIR_MIN, SITE } from "@/data/site";
-import { berat, nomorPesananSementara, rupiah } from "@/lib/format";
+import { buatPesanan, type HasilPesanan } from "@/app/(toko)/actions";
+import { GRATIS_ONGKIR_MIN } from "@/data/site";
+import { berat, rupiah } from "@/lib/format";
 import type { Destination, ShippingRate } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 import { resolveLines, useCart } from "./cart-provider";
@@ -12,7 +13,7 @@ import { resolveLines, useCart } from "./cart-provider";
 type Tahap = "keranjang" | "konfirmasi";
 
 export function CartView({ products }: { products: Product[] }) {
-  const { lines, ready, ubahQty, hapus } = useCart();
+  const { lines, ready, ubahQty, hapus, kosongkan } = useCart();
   const items = useMemo(() => resolveLines(lines, products), [lines, products]);
 
   const subtotal = items.reduce((n, l) => n + l.lineTotal, 0);
@@ -30,7 +31,9 @@ export function CartView({ products }: { products: Product[] }) {
   const [telepon, setTelepon] = useState("");
   const [alamat, setAlamat] = useState("");
   const [tahap, setTahap] = useState<Tahap>("keranjang");
-  const [nomor, setNomor] = useState("");
+  const [pesanan, setPesanan] = useState<Extract<HasilPesanan, { ok: true }> | null>(null);
+  const [galat, setGalat] = useState("");
+  const [mengirim, setMengirim] = useState(false);
 
   /** Ketikan baru berarti tujuan lama tidak berlaku lagi — dibereskan di sini,
    *  di penangan peristiwa, bukan lewat effect. */
@@ -92,34 +95,31 @@ export function CartView({ products }: { products: Product[] }) {
 
   const bisaPesan = items.length > 0 && tujuan && pilihTarif && nama.trim() && telepon.trim();
 
-  const pesanWa = useMemo(() => {
-    if (!nomor) return "";
-    const baris = items.map((l) => `${l.qty}× ${l.product.name} — ${rupiah(l.lineTotal)}`).join("\n");
-    const kirim =
-      pilihTarif?.code === "pickup"
-        ? "Ambil sendiri di toko Tanjung Barat"
-        : `${pilihTarif?.name} ${pilihTarif?.service} — ${ongkir === 0 ? "Gratis ongkir" : rupiah(ongkir)}`;
-    // Baris alamat opsional dibuang lebih dulu; baris kosong pemisah harus
-    // selamat, jadi penyaringannya tidak boleh memakai filter(Boolean).
-    const tujuanAlamat = [`${nama} · ${telepon}`, alamat.trim(), tujuan?.label ?? ""].filter(
-      (b) => b.length > 0,
-    );
+  async function kirimPesanan() {
+    if (!bisaPesan || mengirim) return;
+    setMengirim(true);
+    setGalat("");
+    const r = await buatPesanan({
+      items: lines,
+      nama,
+      telepon,
+      alamat,
+      tujuan,
+      kurirKode: pilihTarif!.code,
+      kurirLayanan: pilihTarif!.service,
+    });
+    setMengirim(false);
 
-    return [
-      "Halo Romlah, saya mau pesan:",
-      "",
-      `No. Pesanan: ${nomor}`,
-      "",
-      baris,
-      "",
-      `Subtotal: ${rupiah(subtotal)}`,
-      `Pengiriman: ${kirim}`,
-      `Total: ${rupiah(total)}`,
-      "",
-      "Kirim ke:",
-      ...tujuanAlamat,
-    ].join("\n");
-  }, [nomor, items, pilihTarif, ongkir, subtotal, total, nama, telepon, alamat, tujuan]);
+    if (!r.ok) {
+      setGalat(r.error);
+      return;
+    }
+    setPesanan(r);
+    setTahap("konfirmasi");
+    // Keranjang dikosongkan begitu pesanan tersimpan. Tanpa ini, menekan
+    // kembali lalu memesan lagi akan membuat pesanan kedua yang sama.
+    kosongkan();
+  }
 
   if (!ready) {
     return <div className="py-20 text-center text-sm text-muted">Memuat keranjang…</div>;
@@ -142,42 +142,60 @@ export function CartView({ products }: { products: Product[] }) {
     );
   }
 
-  /* ── Layar konfirmasi setelah menekan "Pesan lewat WhatsApp" ─────── */
-  if (tahap === "konfirmasi") {
+  /* ── Layar konfirmasi: pesanan SUDAH tersimpan di basis data ────── */
+  if (tahap === "konfirmasi" && pesanan) {
+    const p = pesanan.pesanan;
     return (
       <div className="mx-auto max-w-lg">
         <div className="rounded-2xl border border-pandan bg-pandan-soft p-6 text-center">
-          <p className="font-display text-xl font-bold">Pesanan siap dikirim ke WhatsApp</p>
-          <p className="tabular mt-2 text-lg font-bold text-jingga">{nomor}</p>
+          <p className="font-display text-xl font-bold">Pesanan tersimpan</p>
+          <p className="tabular mt-2 text-lg font-bold text-jingga">{p.orderNumber}</p>
           <p className="mt-3 text-sm text-ink-2">
             Sebutkan nomor ini saat berbalas pesan supaya admin langsung menemukan pesanan Anda.
           </p>
         </div>
 
-        <h2 className="mt-8 text-xs font-semibold tracking-widest text-muted uppercase">Pesan yang akan terkirim</h2>
+        <dl className="mt-5 grid grid-cols-[1fr_auto] gap-2 rounded-2xl border border-line bg-surface p-5 text-sm">
+          <dt className="text-ink-2">Subtotal · {berat(p.weightGram)}</dt>
+          <dd className="tabular text-right font-medium">{rupiah(p.subtotal)}</dd>
+          <dt className="text-ink-2">
+            {p.kurir} {p.layanan !== p.kurir && p.layanan}
+          </dt>
+          <dd className="tabular text-right font-medium">
+            {p.shippingCost === 0 ? "Gratis" : rupiah(p.shippingCost)}
+          </dd>
+          <dt className="border-t border-line pt-2 font-bold">Total</dt>
+          <dd className="tabular border-t border-line pt-2 text-right font-bold">{rupiah(p.total)}</dd>
+        </dl>
+
+        <h2 className="mt-7 text-xs font-semibold tracking-widest text-muted uppercase">
+          Pesan yang akan terkirim
+        </h2>
         <pre className="mt-2 overflow-x-auto rounded-2xl border border-line bg-surface p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap text-ink-2">
-          {pesanWa}
+          {pesanan.pesan}
         </pre>
 
         <a
-          href={`https://wa.me/${SITE.whatsapp.number}?text=${encodeURIComponent(pesanWa)}`}
+          href={pesanan.tautanWa}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-5 block rounded-xl bg-pandan px-6 py-4 text-center text-sm font-semibold text-pandan-ink shadow-float transition hover:brightness-110"
         >
           Buka WhatsApp
         </a>
-        <button
-          type="button"
-          onClick={() => setTahap("keranjang")}
-          className="mt-3 w-full rounded-xl border border-line-2 px-6 py-3.5 text-sm font-semibold transition hover:bg-sunken"
+        <Link
+          href={`/pesanan/${p.orderNumber}`}
+          className="mt-3 block rounded-xl border border-line-2 px-6 py-3.5 text-center text-sm font-semibold transition hover:bg-sunken"
         >
-          Kembali ubah pesanan
-        </button>
+          Lihat status pesanan
+        </Link>
+        <Link href="/katalog" className="mt-4 block text-center text-xs text-muted underline underline-offset-2">
+          Belanja lagi
+        </Link>
 
-        <p className="mt-6 rounded-xl border border-warn/40 bg-warn-soft p-4 text-xs leading-relaxed text-ink-2">
-          <b>Catatan pengembangan:</b> nomor pesanan ini dibuat di browser dan belum tersimpan ke mana pun. Setelah
-          database aktif, nomor akan diterbitkan server dan pesanannya langsung muncul di dasbor admin.
+        <p className="mt-6 text-center text-xs leading-relaxed text-muted">
+          Pesanan sudah tercatat meski WhatsApp gagal terbuka. Simpan nomornya untuk membuka
+          halaman status kapan saja.
         </p>
       </div>
     );
@@ -417,15 +435,18 @@ export function CartView({ products }: { products: Product[] }) {
             </button>
             <button
               type="button"
-              disabled={!bisaPesan}
-              onClick={() => {
-                setNomor(nomorPesananSementara());
-                setTahap("konfirmasi");
-              }}
+              disabled={!bisaPesan || mengirim}
+              onClick={kirimPesanan}
               className="w-full rounded-xl bg-pandan px-5 py-4 text-sm font-semibold text-pandan-ink shadow-float transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Pesan lewat WhatsApp
+              {mengirim ? "Menyimpan pesanan…" : "Pesan lewat WhatsApp"}
             </button>
+
+            {galat && (
+              <p role="alert" className="rounded-xl border border-jingga/40 bg-jingga-soft px-4 py-3 text-xs text-ink-2">
+                {galat}
+              </p>
+            )}
           </div>
 
           <p className="mt-3 text-center text-xs text-muted">

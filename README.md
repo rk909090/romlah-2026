@@ -52,10 +52,16 @@ Untuk produksi, setel di panel Hostinger. **Jangan** menaruh nilainya di berkas
 yang ikut ter-commit — `.env*` diabaikan git, kecuali `.env.example`.
 
 ```bash
-node scripts/db-setup.mjs      # terapkan skema + isi 39 produk (aman diulang)
-node scripts/db-smoke-test.mjs # jalankan setiap kueri aplikasi terhadap DB
-node scripts/password-test.mjs # uji hash & verifikasi kata sandi
+node scripts/db-setup.mjs       # terapkan skema + isi 39 produk (aman diulang)
+node scripts/db-smoke-test.mjs  # jalankan setiap kueri aplikasi terhadap DB
+node scripts/password-test.mjs  # uji hash & verifikasi kata sandi
+node --import ./scripts/ts-resolver.mjs scripts/order-test.mjs   # uji simpan pesanan
 ```
+
+`order-test.mjs` menyimpan pesanan sungguhan memakai nomor uji `62899999…`
+lalu menghapus seluruh jejaknya, jadi aman dijalankan pada basis data yang
+sedang dipakai. `ts-resolver.mjs` hanya alat uji: Node ESM tidak mengenal alias
+`@/` dan menuntut ekstensi eksplisit, sedangkan kode aplikasi memakai keduanya.
 
 **Kuota Hostinger untuk akun basis data ini: 500 koneksi per jam, maksimum 100
 koneksi bersamaan, statement maksimum 180 detik.** Karena itu `src/lib/db.ts`
@@ -66,6 +72,32 @@ Tanpa ORM, dengan sengaja. `drizzle-kit` bergantung pada esbuild dan Prisma
 mengunduh engine, keduanya lewat skrip pascapasang — persis jenis masalah yang
 sudah beberapa kali menggagalkan build di Hostinger. Kueri ditulis sebagai SQL
 berparameter; tipe parameternya dipersempit lewat `SqlParam`.
+
+## Alur pesanan WhatsApp
+
+Tombol **Pesan lewat WhatsApp** di keranjang memanggil server action
+`buatPesanan`, yang menyimpan pesanan ke basis data lebih dulu, baru menyusun
+pesan WhatsApp dari angka yang sudah tersimpan. Dengan urutan itu, isi pesan
+dan isi basis data mustahil berbeda.
+
+**Server tidak pernah mempercayai angka dari browser.** Klien hanya mengirim
+pilihan — produk mana, kurir mana. Harga, berat, ongkir, dan ambang gratis
+ongkir seluruhnya dihitung ulang di `src/lib/orders.ts` dari basis data dan
+dari penyedia ongkir. Nama dan harga barang **disalin** ke `order_items`, jadi
+kenaikan harga bulan depan tidak mengubah nota lama.
+
+Pelanggan ter-`upsert` berdasarkan nomor telepon yang dinormalkan, dan seluruh
+penulisan (pelanggan, alamat, pesanan, baris pesanan) berjalan dalam satu
+transaksi — pesanan tanpa barang lebih buruk daripada pesanan yang gagal.
+
+Nomor pesanan berformat `RML-YYMMDD-XXXXX` dengan lima karakter acak, bukan
+urut. Halaman status `/pesanan/[nomor]` bisa dibuka tanpa login supaya pembeli
+tidak perlu membuat akun; kalau nomornya urut, siapa pun bisa menebak nomor
+tetangganya dan membaca alamat orang lain.
+
+Keranjang dikosongkan begitu pesanan tersimpan, dan layar konfirmasi bersifat
+final — tanpa itu, menekan kembali lalu memesan lagi akan membuat pesanan
+kedua yang sama.
 
 ## Panel admin
 
@@ -79,8 +111,8 @@ Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
 | `/admin` | Dasbor: produk aktif, stok habis, produk tanpa foto |
 | `/admin/produk` | Daftar, cari, tapis kategori/status, arsipkan |
 | `/admin/produk/baru`, `/admin/produk/[id]` | Buat dan ubah produk |
-| `/admin/pesanan` | Daftar pesanan (masih kosong) |
-| `/admin/pelanggan` | Daftar pelanggan, dikunci nomor WhatsApp (masih kosong) |
+| `/admin/pesanan`, `/admin/pesanan/[id]` | Daftar & detail pesanan, ubah status dan nomor resi |
+| `/admin/pelanggan` | Daftar pelanggan, dikunci nomor WhatsApp |
 | `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
 
 Beberapa keputusan keamanan:
@@ -118,9 +150,9 @@ Ditandai jelas di kode dan di layar, bukan disembunyikan:
   pemanggilannya sudah lewat route handler supaya API key tidak bocor ke browser.
 - **Pembayaran** — tombol "Bayar sekarang" sengaja dinonaktifkan sampai kunci
   Midtrans ada.
-- **Nomor pesanan** — masih dibuat di browser dan belum tersimpan, meski tabel
-  `orders` sudah siap. Menyambungkannya adalah langkah berikutnya: setiap
-  pesanan WhatsApp akan tercatat lengkap dan muncul di `/admin/pesanan`.
+- **Pembayaran** — hanya itu yang tersisa. Status `dibayar` masih ditandai
+  manual di panel setelah transfer masuk; nanti webhook Midtrans yang
+  menandainya.
 - **Testimoni** (`TESTIMONIALS` di `src/data/site.ts`) — sengaja kosong.
   Bagiannya tidak dirender selama larik itu kosong. Tidak diisi kutipan karangan.
 

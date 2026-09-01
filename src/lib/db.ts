@@ -81,3 +81,45 @@ export async function execute(
   const r = hasil as mysql.ResultSetHeader;
   return { insertId: r.insertId, affectedRows: r.affectedRows };
 }
+
+/** Kueri dan perintah di dalam satu transaksi. */
+export type Tx = {
+  query<T = Record<string, unknown>>(sql: string, params?: SqlParam[]): Promise<T[]>;
+  execute(sql: string, params?: SqlParam[]): Promise<{ insertId: number; affectedRows: number }>;
+};
+
+/**
+ * Jalankan beberapa perintah sebagai satu transaksi.
+ *
+ * Dipakai saat menyimpan pesanan: pelanggan, pesanan, dan baris pesanan harus
+ * masuk semua atau tidak sama sekali. Pesanan tanpa barang, atau barang tanpa
+ * pesanan, lebih buruk daripada pesanan yang gagal tersimpan.
+ *
+ * Koneksi selalu dikembalikan ke kolam, termasuk saat melempar — kuota
+ * Hostinger hanya 100 koneksi bersamaan.
+ */
+export async function transaksi<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const tx: Tx = {
+      async query(sql, params = []) {
+        const [rows] = await conn.execute(sql, params);
+        return rows as never;
+      },
+      async execute(sql, params = []) {
+        const [hasil] = await conn.execute(sql, params);
+        const r = hasil as mysql.ResultSetHeader;
+        return { insertId: r.insertId, affectedRows: r.affectedRows };
+      },
+    };
+    const hasil = await fn(tx);
+    await conn.commit();
+    return hasil;
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+}

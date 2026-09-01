@@ -13,6 +13,7 @@ import {
   verifyPassword,
 } from "@/lib/auth";
 import { execute, queryOne } from "@/lib/db";
+import { SEMUA_STATUS, STATUS_LUNAS, type StatusPesanan } from "@/lib/order-status";
 import {
   archiveProduct,
   createProduct,
@@ -212,4 +213,49 @@ export async function ubahArsip(formData: FormData): Promise<void> {
   revalidatePath("/admin/produk");
   revalidatePath("/katalog");
   revalidatePath("/");
+}
+
+/* ── Pesanan ───────────────────────────────────────────────────────── */
+export async function ubahPesanan(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return { error: "Pesanan tidak dikenali." };
+
+  const status = String(formData.get("status") ?? "");
+  // Status divalidasi terhadap daftar yang sah, bukan diteruskan apa adanya
+  // ke SQL — kolomnya ENUM, dan nilai asing akan ditolak basis data dengan
+  // galat mentah yang tidak berguna bagi siapa pun.
+  if (!SEMUA_STATUS.includes(status as StatusPesanan)) {
+    return { error: "Status itu tidak dikenal." };
+  }
+
+  const resi = String(formData.get("tracking") ?? "").trim();
+
+  // Daftar status lunas diambil dari satu sumber, bukan ditulis ulang di SQL,
+  // supaya tidak melenceng kalau daftarnya berubah.
+  const lunas = STATUS_LUNAS.map(() => "?").join(",");
+  await execute(
+    `UPDATE orders
+        SET status = ?,
+            tracking_number = ?,
+            paid_at = CASE WHEN ? IN (${lunas}) AND paid_at IS NULL THEN NOW() ELSE paid_at END
+      WHERE id = ?`,
+    [status, resi || null, status, ...STATUS_LUNAS, id],
+  );
+
+  // Tanggal pesanan terakhir pelanggan ikut disegarkan supaya urutan di
+  // daftar pelanggan tetap masuk akal.
+  await execute(
+    `UPDATE customers c
+        JOIN orders o ON o.customer_id = c.id
+        SET c.last_order_at = GREATEST(COALESCE(c.last_order_at, o.created_at), o.created_at)
+      WHERE o.id = ?`,
+    [id],
+  );
+
+  revalidatePath("/admin/pesanan");
+  revalidatePath(`/admin/pesanan/${id}`);
+  revalidatePath("/admin/pelanggan");
+  return { ok: "Pesanan diperbarui." };
 }

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
 import { query } from "@/lib/db";
 import { rupiah } from "@/lib/format";
@@ -58,12 +59,17 @@ export default async function Pesanan() {
                   <th className="px-4 py-3 text-xs font-semibold tracking-wider text-muted uppercase">Kanal</th>
                   <th className="px-4 py-3 text-xs font-semibold tracking-wider text-muted uppercase">Status</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold tracking-wider text-muted uppercase">Total</th>
+                  <th className="px-4 py-3" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {pesanan.map((p) => (
                   <tr key={p.id}>
-                    <td className="tabular px-4 py-3 font-semibold">{p.order_number}</td>
+                    <td className="tabular px-4 py-3 font-semibold">
+                      <Link href={`/admin/pesanan/${p.id}`} className="hover:text-jingga">
+                        {p.order_number}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">
                       <span className="block font-medium">{p.customer_name}</span>
                       <span className="block text-xs text-muted">{p.customer_phone}</span>
@@ -79,6 +85,14 @@ export default async function Pesanan() {
                       </span>
                     </td>
                     <td className="tabular px-4 py-3 text-right font-bold">{rupiah(Number(p.total))}</td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/admin/pesanan/${p.id}`}
+                        className="rounded-lg border border-line px-3 py-1.5 text-xs font-semibold transition hover:bg-sunken"
+                      >
+                        Buka
+                      </Link>
+                    </td>
                   </tr>
                 ))}
               </tbody>
