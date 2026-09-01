@@ -21,17 +21,19 @@ minimumReleaseAgeExclude:
   - eslint-config-next@16.3.4
   - next@16.3.4
 
-# onlyBuiltDependencies
-#   pnpm 11 keluar dengan kode 1 bila ada skrip pascapasang yang tertahan
-#   tanpa keputusan eksplisit. Ini daftar izin: hanya paket di sini yang
-#   boleh menjalankan skripnya.
+# allowBuilds
+#   pnpm 11 keluar dengan kode 1 (strictDepBuilds, bawaan aktif) bila ada
+#   dependensi berskrip pascapasang yang belum ditinjau.
 #
-#   unrs-resolver dipakai eslint-config-next dan butuh binding native-nya.
+#   PENTING: di pnpm 11 setelan `onlyBuiltDependencies`, `neverBuiltDependencies`,
+#   dan `ignoredBuiltDependencies` SUDAH DIHAPUS dan diganti `allowBuilds`.
+#   Kunci lama tidak menimbulkan galat — ia hanya diabaikan diam-diam, sehingga
+#   instalasi tetap gagal tanpa petunjuk. Jangan memakai kunci lama di sini.
 #
-#   sharp SENGAJA tidak didaftarkan. Next.js memakainya untuk optimasi
-#   gambar di produksi, tapi binernya datang dari paket prabangun
-#   (@img/sharp-linux-x64 dan @img/sharp-libvips-linux-x64 ada di lockfile),
-#   bukan dari skrip pascapasang. Menjalankan skripnya justru berisiko
-#   memicu kompilasi libvips dari sumber.
-onlyBuiltDependencies:
-  - unrs-resolver
+#   Keduanya ditolak (false) karena binernya sudah datang sebagai paket
+#   prabangun yang ada di lockfile — @unrs/resolver-binding-linux-x64-gnu dan
+#   @img/sharp-linux-x64 — jadi skrip pascapasangnya tidak dibutuhkan, dan
+#   menjalankannya justru berisiko memicu kompilasi dari sumber.
+allowBuilds:
+  sharp: false
+  unrs-resolver: false

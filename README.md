@@ -82,8 +82,16 @@ Tiga hal yang membuat build pertama gagal, dan cara mengatasinya:
    pnpm untuk paket Next.js yang versinya dipatok persis.
 
 3. **Skrip pascapasang dependensi.** pnpm 11 keluar dengan kode 1 bila ada
-   skrip build yang tertahan tanpa dinyatakan. Keputusannya dicatat eksplisit
-   di `pnpm-workspace.yaml`.
+   dependensi berskrip pascapasang yang belum ditinjau. Keputusannya dicatat
+   eksplisit lewat `allowBuilds` di `pnpm-workspace.yaml`.
+
+   Perhatikan: pnpm 11 **menghapus** `onlyBuiltDependencies`,
+   `neverBuiltDependencies`, dan `ignoredBuiltDependencies`, menggantinya
+   dengan `allowBuilds`. Kunci lama tidak memicu galat — ia diabaikan
+   diam-diam, jadi instalasi tetap gagal tanpa petunjuk apa pun. Kalau kelak
+   error `ERR_PNPM_IGNORED_BUILDS` muncul lagi untuk paket baru, tambahkan
+   paket itu ke `allowBuilds` dengan `true` atau `false`, jangan pakai kunci
+   lama.
 
 Lockfile tetap `lockfileVersion: 9.0` — format itu dibaca pnpm 11 tanpa
 masalah; kegagalannya dulu murni soal kebijakan, bukan format.
