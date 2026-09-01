@@ -87,12 +87,53 @@ CREATE TABLE IF NOT EXISTS product_images (
     REFERENCES products (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ── Pelanggan ─────────────────────────────────────────────────────────
+-- Kuncinya NOMOR TELEPON, bukan email. Pembeli lewat WhatsApp datang
+-- membawa nomor, bukan alamat email; tanpa ini pesanan dari WhatsApp dan
+-- dari website tidak akan pernah bisa disatukan jadi satu riwayat.
+--
+-- Nomor disimpan dalam bentuk ternormalisasi (hanya angka, berawalan 62)
+-- supaya "0812...", "+62812...", dan "62812..." menunjuk orang yang sama.
+CREATE TABLE IF NOT EXISTS customers (
+  id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  phone         VARCHAR(24)   NOT NULL,
+  name          VARCHAR(190)  NOT NULL,
+  email         VARCHAR(190)  NULL,
+  note          VARCHAR(255)  NULL,
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  last_order_at DATETIME      NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_customers_phone (phone),
+  KEY idx_customers_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Alamat pelanggan ──────────────────────────────────────────────────
+-- Disimpan terpisah supaya pembeli lama bisa memesan ulang tanpa mengetik
+-- alamatnya lagi, dan supaya satu orang boleh punya lebih dari satu tujuan.
+CREATE TABLE IF NOT EXISTS customer_addresses (
+  id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  customer_id       INT UNSIGNED  NOT NULL,
+  label             VARCHAR(60)   NULL,
+  recipient_name    VARCHAR(190)  NOT NULL,
+  phone             VARCHAR(24)   NOT NULL,
+  address           TEXT          NOT NULL,
+  destination_id    INT UNSIGNED  NULL,   -- id tujuan RajaOngkir
+  destination_label VARCHAR(255)  NULL,
+  is_default        TINYINT(1)    NOT NULL DEFAULT 0,
+  created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_customer_addresses_customer (customer_id, is_default),
+  CONSTRAINT fk_customer_addresses_customer FOREIGN KEY (customer_id)
+    REFERENCES customers (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ── Pesanan ───────────────────────────────────────────────────────────
 -- Tabel disiapkan sekarang supaya alur WhatsApp bisa mulai mencatat
 -- pesanan tanpa perubahan skema lagi. Belum ada yang menulis ke sini.
 CREATE TABLE IF NOT EXISTS orders (
   id             INT UNSIGNED  NOT NULL AUTO_INCREMENT,
   order_number   VARCHAR(32)   NOT NULL,
+  customer_id    INT UNSIGNED  NULL,
   channel        ENUM('web','whatsapp') NOT NULL DEFAULT 'whatsapp',
   status         ENUM('menunggu_konfirmasi','menunggu_bayar','dibayar',
                       'diproses','dikirim','selesai','dibatalkan',
@@ -119,7 +160,10 @@ CREATE TABLE IF NOT EXISTS orders (
   PRIMARY KEY (id),
   UNIQUE KEY uq_orders_number (order_number),
   KEY idx_orders_status (status, created_at),
-  KEY idx_orders_phone (customer_phone)
+  KEY idx_orders_phone (customer_phone),
+  KEY idx_orders_customer (customer_id),
+  CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id)
+    REFERENCES customers (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ── Baris pesanan ─────────────────────────────────────────────────────
@@ -140,3 +184,15 @@ CREATE TABLE IF NOT EXISTS order_items (
   CONSTRAINT fk_order_items_product FOREIGN KEY (product_id)
     REFERENCES products (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Migrasi untuk basis data yang sudah terlanjur dibuat ──────────────
+-- Tabel orders dibuat lebih dulu tanpa kolom customer_id. CREATE TABLE
+-- IF NOT EXISTS tidak akan menambahkannya, jadi diperlukan ALTER.
+-- `IF NOT EXISTS` pada ALTER adalah perluasan MariaDB, bukan MySQL —
+-- aman di sini karena Hostinger menjalankan MariaDB 11.8.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_id INT UNSIGNED NULL AFTER order_number;
+ALTER TABLE orders ADD KEY IF NOT EXISTS idx_orders_customer (customer_id);
+-- Catatan sintaks: pada MariaDB, `IF NOT EXISTS` untuk kunci asing diletakkan
+-- SESUDAH `FOREIGN KEY`, bukan sesudah `ADD CONSTRAINT`.
+ALTER TABLE orders ADD CONSTRAINT fk_orders_customer
+  FOREIGN KEY IF NOT EXISTS (customer_id) REFERENCES customers (id) ON DELETE SET NULL;

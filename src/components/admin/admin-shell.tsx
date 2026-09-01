@@ -11,6 +11,7 @@ const NAV = [
   { href: "/admin", label: "Dasbor", exact: true, d: "M4 12 12 5l8 7v7a1 1 0 0 1-1 1h-4v-5h-6v5H5a1 1 0 0 1-1-1v-7Z" },
   { href: "/admin/produk", label: "Produk", d: "M4 8.5 12 4l8 4.5v7L12 20l-8-4.5v-7Zm0 0 8 4.5m0 0 8-4.5m-8 4.5V20" },
   { href: "/admin/pesanan", label: "Pesanan", d: "M6 4h9l4 4v12H6V4Zm9 0v4h4M9 12h7M9 16h5" },
+  { href: "/admin/pelanggan", label: "Pelanggan", d: "M16 19v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1M10 10a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm10 9v-1a4 4 0 0 0-3-3.9M15 4.1a4 4 0 0 1 0 7.8" },
   { href: "/admin/pengaturan", label: "Pengaturan", d: "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm8 3a8 8 0 0 0-.2-1.7l2-1.5-2-3.4-2.3 1a8 8 0 0 0-2.9-1.7L14.2 2H9.8l-.4 2.7a8 8 0 0 0-2.9 1.7l-2.3-1-2 3.4 2 1.5a8 8 0 0 0 0 3.4l-2 1.5 2 3.4 2.3-1a8 8 0 0 0 2.9 1.7l.4 2.7h4.4l.4-2.7a8 8 0 0 0 2.9-1.7l2.3 1 2-3.4-2-1.5c.13-.55.2-1.12.2-1.7Z" },
 ];
 

@@ -31,9 +31,20 @@ dikembalikan ke SSG untuk mempercepatnya.
 
 ## Basis data
 
-MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — tujuh tabel:
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — sembilan tabel:
 `admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
-`orders`, `order_items`.
+`customers`, `customer_addresses`, `orders`, `order_items`.
+
+**Pelanggan dikunci nomor telepon, bukan email.** Pembeli lewat WhatsApp datang
+membawa nomor; tanpa itu pesanan dari WhatsApp dan dari website tidak akan
+pernah bisa disatukan jadi satu riwayat. Nomor dinormalkan ke bentuk `62…`
+lewat `normalkanTelepon()` sehingga `0812…`, `+62812…`, dan `62812…` tidak
+tercatat sebagai tiga orang berbeda.
+
+Sebagian pernyataan `ALTER TABLE … IF NOT EXISTS` di akhir skema adalah
+perluasan MariaDB, bukan MySQL. Perhatikan juga letak `IF NOT EXISTS` untuk
+kunci asing: ia diletakkan **sesudah** `FOREIGN KEY`, bukan sesudah
+`ADD CONSTRAINT`.
 
 Variabel lingkungan yang wajib ada (lihat `.env.example`): `DATABASE_HOST`,
 `DATABASE_PORT`, `DATABASE_NAME`, `DATABASE_USER`, `DATABASE_PASSWORD`.
@@ -69,6 +80,7 @@ Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
 | `/admin/produk` | Daftar, cari, tapis kategori/status, arsipkan |
 | `/admin/produk/baru`, `/admin/produk/[id]` | Buat dan ubah produk |
 | `/admin/pesanan` | Daftar pesanan (masih kosong) |
+| `/admin/pelanggan` | Daftar pelanggan, dikunci nomor WhatsApp (masih kosong) |
 | `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
 
 Beberapa keputusan keamanan:

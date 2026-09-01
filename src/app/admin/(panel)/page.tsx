@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
+import { countCustomers } from "@/lib/admin/customers";
 import { getDashboardStats, listCategories, listProducts } from "@/lib/admin/products";
 import { rupiah } from "@/lib/format";
 
@@ -41,10 +42,11 @@ function Kartu({
 }
 
 export default async function Dasbor() {
-  const [stat, kategori, produk] = await Promise.all([
+  const [stat, kategori, produk, jumlahPelanggan] = await Promise.all([
     getDashboardStats(),
     listCategories(),
     listProducts({ status: "aktif" }),
+    countCustomers(),
   ]);
 
   const nilaiKatalog = produk.reduce((n, p) => n + p.price, 0);
@@ -54,7 +56,7 @@ export default async function Dasbor() {
     <>
       <AdminHeading title="Dasbor" description="Ringkasan isi toko." />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <Kartu label="Produk aktif" nilai={stat.produkAktif} href="/admin/produk" />
         <Kartu
           label="Stok habis"
@@ -69,7 +71,18 @@ export default async function Dasbor() {
           catatan={stat.tanpaFoto > 0 ? "Perlu difoto sebelum dipajang" : "Semua produk berfoto"}
           tegas={stat.tanpaFoto > 0}
         />
-        <Kartu label="Pesanan" nilai={stat.totalPesanan} catatan="Belum ada yang masuk" href="/admin/pesanan" />
+        <Kartu
+          label="Pesanan"
+          nilai={stat.totalPesanan}
+          catatan={stat.totalPesanan === 0 ? "Belum ada yang masuk" : undefined}
+          href="/admin/pesanan"
+        />
+        <Kartu
+          label="Pelanggan"
+          nilai={jumlahPelanggan}
+          catatan={jumlahPelanggan === 0 ? "Terisi saat pesanan pertama" : undefined}
+          href="/admin/pelanggan"
+        />
       </div>
 
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.4fr_1fr]">

@@ -69,6 +69,23 @@ const uji = [
   ["admin: daftar pesanan",
     `SELECT id, order_number, channel, status, customer_name, customer_phone, total, created_at
        FROM orders ORDER BY created_at DESC LIMIT 100`, []],
+  ["pelanggan: daftar + agregat",
+    `SELECT c.id, c.phone, c.name, c.email, c.note,
+            c.created_at AS createdAt, c.last_order_at AS lastOrderAt,
+            (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS orderCount,
+            COALESCE((SELECT SUM(o.total) FROM orders o
+                       WHERE o.customer_id = c.id AND o.status NOT IN
+                         ('dibatalkan','kedaluwarsa','dikembalikan')), 0) AS totalSpent
+       FROM customers c ORDER BY c.last_order_at IS NULL, c.last_order_at DESC, c.name`, []],
+  ["pelanggan: cari", `SELECT id FROM customers WHERE name LIKE ? OR phone LIKE ? OR email LIKE ?`,
+    ["%a%", "%628%", "%a%"]],
+  ["pelanggan: alamat",
+    `SELECT id, label, recipient_name, phone, address, destination_label, is_default
+       FROM customer_addresses WHERE customer_id = ? ORDER BY is_default DESC, id DESC`, [0]],
+  ["pelanggan: riwayat pesanan",
+    `SELECT id, order_number, status, channel, total, created_at
+       FROM orders WHERE customer_id = ? ORDER BY created_at DESC LIMIT 50`, [0]],
+  ["pelanggan: hitung", `SELECT COUNT(*) AS n FROM customers`, []],
   ["auth: cari admin", `SELECT id, password_hash FROM admin_users WHERE email = ? LIMIT 1`, ["x@y.z"]],
   ["auth: hitung admin", `SELECT COUNT(*) AS n FROM admin_users`, []],
   ["auth: sesi join pengguna",
