@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Lencana dev Next.js menutupi tab bar dan ikon keranjang di layar kecil.
+  devIndicators: false,
 };
 
 export default nextConfig;

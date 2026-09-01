@@ -1,0 +1,935 @@
+[
+  {
+    "legacyId": 27880,
+    "slug": "akar-kelapa-ketan",
+    "name": "Akar Kelapa Ketan",
+    "price": 39000,
+    "weightGram": 500,
+    "category": "makanan",
+    "description": [
+      "Akar kelapa ketan adalah varian baru dari kami",
+      "agar makanan tradisional ini tidak luntur dan ada variasi baru dari makanan khas Betawi Jakarta."
+    ],
+    "images": [
+      {
+        "src": "/produk/akar-kelapa-ketan-1.jpg",
+        "alt": "Akar Kelapa Ketan"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31331,
+    "slug": "arum-manis-rambut-nenek",
+    "name": "Arum Manis (Rambut Nenek)",
+    "price": 22000,
+    "weightGram": 60,
+    "category": "makanan",
+    "description": [
+      "Rambut nenek jajanan legendaris yang kini dikemas lebih kekinian. Tersedia berbagai varian rasa.",
+      "Komposisi:",
+      "Gula,tepung terigu, minyak nabati,perasa makanan."
+    ],
+    "images": [
+      {
+        "src": "/produk/arum-manis-rambut-nenek-1.jpg",
+        "alt": "Arum Manis (Rambut Nenek)"
+      },
+      {
+        "src": "/produk/arum-manis-rambut-nenek-2.jpg",
+        "alt": "Arum Manis (Rambut Nenek)"
+      }
+    ],
+    "inStock": false,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31665,
+    "slug": "arum-manis-jadul",
+    "name": "Arum Manis Jadul",
+    "price": 20000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Produk Arum Manis sangat cocok untuk dinikmati oleh anak-anak maupun orang dewasa. Rasanya yang manis dan tampilan yang menarik membuatnya menjadi pilihan favorit untuk oleh-oleh, tetangga, sodara, atau temen."
+    ],
+    "images": [
+      {
+        "src": "/produk/arum-manis-jadul-1.jpg",
+        "alt": "Arum Manis Jadul"
+      },
+      {
+        "src": "/produk/arum-manis-jadul-2.jpg",
+        "alt": "Arum Manis Jadul"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 853,
+    "slug": "biji-ketapang",
+    "name": "Biji Ketapang Premium",
+    "price": 40000,
+    "weightGram": 450,
+    "category": "makanan",
+    "description": [
+      "Makanan khas betawi ini selalu ada pada saat lebaran tiba, warga asli betawi pasti tidak asing lagi dengan makanan ini, rasa gurih dan renyahnya camilan ini memang selalu ditunggu-tunggu pada saat lebaran tiba karena makanan ini punya cita rasa yang memang cocok untuk semua kalangan remaja, anak-anak dan orang tua.",
+      "Untuk mengobati rasa kangen anda pada makanan ringan ini anda anda tidak perlu repot-repot lagi membuatnya apalagi menunggu sampai lebaran tiba, karena kami menyediakan makanan oleh-oleh khas Jakarta yang di jamin halal dan enak."
+    ],
+    "images": [
+      {
+        "src": "/produk/biji-ketapang-1.jpg",
+        "alt": "Biji Ketapang Premium"
+      },
+      {
+        "src": "/produk/biji-ketapang-2.jpg",
+        "alt": "Biji Ketapang Premium"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 911,
+    "slug": "dodol-betawi",
+    "name": "Dodol Betawi",
+    "price": 19000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Dodol betawi ini selalu hadir pada setiap perayaan pesta-pesta masyarakat betawi, juga untuk seserahan pernikahan, dodol betawi ini memakai gula merah asli tanpa pemanis dan pengawet, jika dodol ini berjamur sedikit maka anda tetap bisa dimakan dengan cara dilebur kembali atau digoreng memakai tepung terigu"
+    ],
+    "images": [
+      {
+        "src": "/produk/dodol-betawi-1.jpg",
+        "alt": "Dodol Betawi"
+      },
+      {
+        "src": "/produk/dodol-betawi-2.jpg",
+        "alt": "Dodol Betawi"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31318,
+    "slug": "egg-royale",
+    "name": "Egg Royale",
+    "price": 57000,
+    "weightGram": 300,
+    "category": "makanan",
+    "description": [
+      "Egg royale kue kering cocok untuk temen ngeteh dan ngopi",
+      "Komposisi:",
+      "Tepung tapioka, tepung gandum,garam ,telur,gula,santan dll"
+    ],
+    "images": [
+      {
+        "src": "/produk/egg-royale-1.jpg",
+        "alt": "Egg Royale"
+      },
+      {
+        "src": "/produk/egg-royale-2.jpg",
+        "alt": "Egg Royale"
+      },
+      {
+        "src": "/produk/egg-royale-3.jpg",
+        "alt": "Egg Royale"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 927,
+    "slug": "gabus-keju",
+    "name": "Gabus Keju",
+    "price": 12000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Gabus keju gurih dan mantap"
+    ],
+    "images": [
+      {
+        "src": "/produk/gabus-keju-1.jpg",
+        "alt": "Gabus Keju"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 849,
+    "slug": "geplak-betawi",
+    "name": "Geplak Betawi",
+    "price": 45000,
+    "weightGram": 400,
+    "category": "makanan",
+    "description": [
+      "Jajanan legendaris punye betawi nichh,.",
+      "Geplak betawi udeh paling top buat dipakai oleh-oleh",
+      "kalau ngaku orang betawi pasti kenal ama ney makanan",
+      "Pade jamannye enyak babeh masih ABG *duhh ilehh",
+      "pasti demen bingitt dechh jajan geplak betawi",
+      "apelagi ney geplak betawi kini dikemas modern di toko oleh-oleh Mpok Romlehh,.ehhh dan biasanye ney geplak juga bisa buat hantaran pernikahan adat betawi lohh"
+    ],
+    "images": [
+      {
+        "src": "/produk/geplak-betawi-1.jpg",
+        "alt": "Geplak Betawi"
+      },
+      {
+        "src": "/produk/geplak-betawi-2.jpg",
+        "alt": "Geplak Betawi"
+      }
+    ],
+    "inStock": false,
+    "isVariable": false
+  },
+  {
+    "legacyId": 919,
+    "slug": "kacang-jakarta",
+    "name": "Kacang Condet",
+    "price": 33000,
+    "weightGram": 250,
+    "category": "makanan",
+    "description": [
+      "Yang membedakan kacang condet dengan kacang bawang adalah kacang condet lebih besar-besar ukurannya dan empuk dimakan, kacang condet mpok Romlah punye rasa gurih, manis yang enak buat dijadiin sebagai cemilan, dan karena kemasannya lucu kacang condet ini juga banyak digemari buat oleh-oleh khas Jakata"
+    ],
+    "images": [
+      {
+        "src": "/produk/kacang-jakarta-1.jpg",
+        "alt": "Kacang Condet"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 787,
+    "slug": "kentang-kriuk",
+    "name": "Kentang Kriuk",
+    "price": 39000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Kentang kriuk gurih nikmat"
+    ],
+    "images": [
+      {
+        "src": "/produk/kentang-kriuk-1.jpg",
+        "alt": "Kentang Kriuk"
+      },
+      {
+        "src": "/produk/kentang-kriuk-2.jpg",
+        "alt": "Kentang Kriuk"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31659,
+    "slug": "keripik-balado-ketela",
+    "name": "Keripik Balado Ketela",
+    "price": 23000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Komposisi Keripik Gado-Gado Ketela :",
+      "– Ketela",
+      "– Gula",
+      "– Garam",
+      "– Cabai",
+      "– Bawang Merah",
+      "– Bawang Putih",
+      "– Daun Jeruk"
+    ],
+    "images": [
+      {
+        "src": "/produk/keripik-balado-ketela-1.jpg",
+        "alt": "Keripik Balado Ketela"
+      },
+      {
+        "src": "/produk/keripik-balado-ketela-2.jpg",
+        "alt": "Keripik Balado Ketela"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 925,
+    "slug": "keripik-bawang",
+    "name": "Keripik Bawang",
+    "price": 15000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Snack ringan dengan bawang merah khas Betawi"
+    ],
+    "images": [
+      {
+        "src": "/produk/keripik-bawang-1.jpg",
+        "alt": "Keripik Bawang"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31664,
+    "slug": "keripik-cheesestik-keju",
+    "name": "Keripik Cheesestik Keju",
+    "price": 23000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Keripik Chesse Stick adalah camilan yang sangat populer dan digemari di berbagai kalangan,. Keripik ini memiliki tekstur yang renyah dan gurih dengan rasa keju yang lezat. Bentuknya yang panjang dan tipis membuatnya mudah untuk dinikmati dan dijadikan teman saat bersantai atau menonton film."
+    ],
+    "images": [
+      {
+        "src": "/produk/keripik-cheesestik-keju-1.jpg",
+        "alt": "Keripik Cheesestik Keju"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31511,
+    "slug": "keripik-pisang-2",
+    "name": "Keripik pisang",
+    "price": 16000,
+    "weightGram": 108,
+    "category": "makanan",
+    "description": [
+      "Renyah keripik pisang yang asli pisangnya rasa gurih bikin nagih dan yang pasti cocok untuk semua momen bareng temen-temen"
+    ],
+    "images": [
+      {
+        "src": "/produk/keripik-pisang-2-1.jpeg",
+        "alt": "Keripik pisang"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31509,
+    "slug": "keripik-tempe-mpok-romlah",
+    "name": "Keripik tempe mpok Romlah",
+    "price": 19000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Tempe makanan lokal yang sudah mendunia. Kali ini mpok romlah menyajikan dalam jenis keripik. Bisa jadi cemilan saat bareng keluarga atau temen.",
+      "125 gram"
+    ],
+    "images": [
+      {
+        "src": "/produk/keripik-tempe-mpok-romlah-1.jpeg",
+        "alt": "Keripik tempe mpok Romlah"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 1550,
+    "slug": "kue-ketawa",
+    "name": "Kue Ketawa",
+    "price": 35000,
+    "weightGram": 350,
+    "category": "makanan",
+    "description": [
+      "Kue ketawa khas betawi gurih dan cocok banget untuk menemani waktu bersantai."
+    ],
+    "images": [
+      {
+        "src": "/produk/kue-ketawa-1.jpg",
+        "alt": "Kue Ketawa"
+      },
+      {
+        "src": "/produk/kue-ketawa-2.jpg",
+        "alt": "Kue Ketawa"
+      },
+      {
+        "src": "/produk/kue-ketawa-3.jpg",
+        "alt": "Kue Ketawa"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 1175,
+    "slug": "kue-satu",
+    "name": "Kue Satu",
+    "price": 45000,
+    "weightGram": 500,
+    "category": "makanan",
+    "description": [
+      "Kue satu kacang hijau",
+      "makanan tradisional rasanya khas kacang hijau",
+      "manisnya pas,.dan yang pasti enak donk,.",
+      "Kue satu ini dibuat dengan cara yang masih sangat tradisional sekali proses pembuatannya memakai cetakan dan proses pengeringan menggunakan sinar matahari langsung",
+      "Tidak memakai proses penggorengan dengan minyak atau dengan open, dan yang pasti cemilan kue satu sangat digemari muda mudi,.dari dulu hingga sekarang makanan kue satu masih saja digemari"
+    ],
+    "images": [
+      {
+        "src": "/produk/kue-satu-1.jpg",
+        "alt": "Kue Satu"
+      },
+      {
+        "src": "/produk/kue-satu-2.jpg",
+        "alt": "Kue Satu"
+      },
+      {
+        "src": "/produk/kue-satu-3.jpg",
+        "alt": "Kue Satu"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31654,
+    "slug": "kue-soes-kakarak",
+    "name": "Kue Soes Kakarak",
+    "price": 22000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Lumernya pecah dimulut",
+      "Tepung Terigu, Gula, Kuning telur, Margarin Dll.",
+      "Tertarik mencoba kue Soes kami? Kami siap memenuhi setiap keinginan Anda. Dari acara perayaan hingga momen kebahagiaan sehari-hari, kue Soes kami menjadi teman setia yang tak tergantikan. Pesanlah sekarang dan nikmati kelezatan yang tak terlupakan."
+    ],
+    "images": [
+      {
+        "src": "/produk/kue-soes-kakarak-1.jpg",
+        "alt": "Kue Soes Kakarak"
+      },
+      {
+        "src": "/produk/kue-soes-kakarak-2.jpg",
+        "alt": "Kue Soes Kakarak"
+      },
+      {
+        "src": "/produk/kue-soes-kakarak-3.jpg",
+        "alt": "Kue Soes Kakarak"
+      },
+      {
+        "src": "/produk/kue-soes-kakarak-4.jpg",
+        "alt": "Kue Soes Kakarak"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31389,
+    "slug": "makaroni-cokelat-kakarak",
+    "name": "Makaroni Cokelat (Kakarak)",
+    "price": 18000,
+    "weightGram": 1000,
+    "category": "makanan",
+    "description": [
+      "Komposisi:",
+      "-Makaroni",
+      "-Minyak Nabati",
+      "-Penyedap Rasa",
+      "-Perasa coklat",
+      "Dll.",
+      "100gram"
+    ],
+    "images": [
+      {
+        "src": "/produk/makaroni-cokelat-kakarak-1.jpg",
+        "alt": "Makaroni Cokelat (Kakarak)"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 776,
+    "slug": "mini-brownies-kering",
+    "name": "Mini Brownies Kering",
+    "price": 18000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Brownies kering mini"
+    ],
+    "images": [
+      {
+        "src": "/produk/mini-brownies-kering-1.jpg",
+        "alt": "Mini Brownies Kering"
+      },
+      {
+        "src": "/produk/mini-brownies-kering-2.jpg",
+        "alt": "Mini Brownies Kering"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 774,
+    "slug": "pencok",
+    "name": "Pencok",
+    "price": 37000,
+    "weightGram": 300,
+    "category": "makanan",
+    "description": [
+      "Kentang Penganten khas Betawi biasanya ada pada saat acara-acara penganten adat betawi saja, Kali ini Mpok Romlah sediain buat fans Mpok nyang demen",
+      "pedas manis dan lengakap ame teri,.",
+      "Makannye bareng nasi anget-anget,.widiiihhh mantep bangett dachh,."
+    ],
+    "images": [
+      {
+        "src": "/produk/pencok-1.jpg",
+        "alt": "Pencok"
+      },
+      {
+        "src": "/produk/pencok-2.jpg",
+        "alt": "Pencok"
+      },
+      {
+        "src": "/produk/pencok-3.jpg",
+        "alt": "Pencok"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31557,
+    "slug": "rengginang-mpok-romlah",
+    "name": "Rengginang Mpok Romlah",
+    "price": 25000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Rengginang Original Pouch",
+      "Bahan-bahan :",
+      "-Beras ketan",
+      "-Garam",
+      "-Gula",
+      "-Bawang",
+      "-Terasi bakar.",
+      "-Penyedap rasa.",
+      "Berat bersih :120gr"
+    ],
+    "images": [
+      {
+        "src": "/produk/rengginang-mpok-romlah-1.jpeg",
+        "alt": "Rengginang Mpok Romlah"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31526,
+    "slug": "sagon-bakar-romlah",
+    "name": "Sagon Bakar Romlah",
+    "price": 25000,
+    "weightGram": 300,
+    "category": "makanan",
+    "description": [
+      "Nah ini kue tradisional yang sudah jarang kita temui di masa kini. Cocok buat temen ngopi atau ngeteh bareng sanak famili.Kalo dulu sagon bakar sering digunakan sebagai cemilan jamuan acara2 adat kini bisa dinikmati kapan saja dan dimana saja.",
+      "Disimpan praktis dengan kemasan diperbaharui menggunakan toples fox yg mudah disimpan dan dibawa kemana saja."
+    ],
+    "images": [
+      {
+        "src": "/produk/sagon-bakar-romlah-1.jpg",
+        "alt": "Sagon Bakar Romlah"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 857,
+    "slug": "sagon-betawi",
+    "name": "Sagon Betawi",
+    "price": 14000,
+    "weightGram": 200,
+    "category": "makanan",
+    "description": [
+      "Makanan jadul khas betawi ini sudah mulai jarang di jumpai. Terbuat dari kelapa dengan rasa manis. Jika kurang manis bisa ditambah gula pasir nye. Berasa di tahun 70 an dah nemu ini. Mpok Romlah kali ini buat untuk oleh-oleh jakarta atau buat yang kangen masa lalu, atau kangen mantan. Halah -_-",
+      "Inget Pesen Mpok kali ini. Makan ini jangan pake ngomong. Nyembuurrr pa lagi di depan kipas angin. Ampuunnn.. -_-"
+    ],
+    "images": [
+      {
+        "src": "/produk/sagon-betawi-1.jpg",
+        "alt": "Sagon Betawi"
+      },
+      {
+        "src": "/produk/sagon-betawi-2.jpg",
+        "alt": "Sagon Betawi"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 799,
+    "slug": "sagu-keju-betawi",
+    "name": "Sagu Keju Betawi",
+    "price": 65000,
+    "weightGram": 220,
+    "category": "makanan",
+    "description": [
+      "Kresss,.kaga pake dikunyahh udeh ancur sendiri dimulut",
+      "ya iyalah jelas aje secara lembut adonan sagu dan kejunye",
+      "super lembut ampe lumer-lumer dimulut",
+      "kalau nyang suka ama nyang keju-keju nichh recomendasi bangett",
+      "buat cemilan apelagi buat oleh-oleh pasti pade berebutan tuhh,.",
+      "catt: Produk rawan hancur/pecah",
+      "disarankan pembelian ambil ditoko/ojek online"
+    ],
+    "images": [
+      {
+        "src": "/produk/sagu-keju-betawi-1.jpg",
+        "alt": "Sagu Keju Betawi"
+      },
+      {
+        "src": "/produk/sagu-keju-betawi-2.jpg",
+        "alt": "Sagu Keju Betawi"
+      },
+      {
+        "src": "/produk/sagu-keju-betawi-3.jpg",
+        "alt": "Sagu Keju Betawi"
+      }
+    ],
+    "inStock": false,
+    "isVariable": false
+  },
+  {
+    "legacyId": 797,
+    "slug": "sagu-keju-pandan",
+    "name": "Sagu Keju Pandan",
+    "price": 65000,
+    "weightGram": 220,
+    "category": "makanan",
+    "description": [
+      "Kue sagu dengan rasa pandan ditaburi keju,.",
+      "nyummyyy bingiiiitt,.",
+      "Rasa kejunya tak terlupakan,.",
+      "sekali makan langsung lep,.lumer dimulut karena saking lembutnye",
+      "oleh-oleh khas jakarte dan cemilan nyang berkesan",
+      "dan kaga bakalan nyesel belinye,.",
+      "catt: Produk rawan hancur/pecah",
+      "disarankan pembelian ambil ditoko/ojek online"
+    ],
+    "images": [
+      {
+        "src": "/produk/sagu-keju-pandan-1.jpg",
+        "alt": "Sagu Keju Pandan"
+      },
+      {
+        "src": "/produk/sagu-keju-pandan-2.jpg",
+        "alt": "Sagu Keju Pandan"
+      }
+    ],
+    "inStock": false,
+    "isVariable": false
+  },
+  {
+    "legacyId": 923,
+    "slug": "sambal-mpok-romlah",
+    "name": "Sambal Mpok Romlah",
+    "price": 33000,
+    "weightGram": 250,
+    "category": "makanan",
+    "description": [
+      "Hati-hati dengan sambal nya Mpok Romlah",
+      "karena dapat menyebabkan ketagihan dan dan porsi makan nambah",
+      "jadi buat yang sedang menjalani program diet Mpok Romlah ngga tanggung jawab kalau setelah makan sambalnya mpok jadi pengin nambah makan terus,.",
+      "Pedesnya nampol,.ada toping terinya pokoknya uuueeenakkk,."
+    ],
+    "images": [
+      {
+        "src": "/produk/sambal-mpok-romlah-1.jpg",
+        "alt": "Sambal Mpok Romlah"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 1599,
+    "slug": "semir-kering",
+    "name": "Semir Kering",
+    "price": 25000,
+    "weightGram": 200,
+    "category": "makanan",
+    "description": [
+      "Kue kering dengan komposisi terigu, telur, gula, margarin, vanili dan bumbu pelengkap."
+    ],
+    "images": [
+      {
+        "src": "/produk/semir-kering-1.jpg",
+        "alt": "Semir Kering"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 1184,
+    "slug": "semprong-unyil",
+    "name": "Semprong Unyil",
+    "price": 32000,
+    "weightGram": 300,
+    "category": "makanan",
+    "description": [
+      "Kalau semprong nyang gede-gede udeh biase dipasaran",
+      "kali ini mpok Romleh menghadirkan semprong nyang unik",
+      "Namanye semprong unyil karena semprongnye imut dan enak ade rasa jahe dan gurihh dechh pokoknye",
+      "Orang betawi mahh pasti kenal dong ama makanan semprong",
+      "Mpok Romleh menjadikan semprong betawi menjadi semprong nyang modern makanan tradisional nyang jadi kekinian.",
+      "disarankan menggunakan gojek. Rawan remuk"
+    ],
+    "images": [
+      {
+        "src": "/produk/semprong-unyil-1.jpg",
+        "alt": "Semprong Unyil"
+      },
+      {
+        "src": "/produk/semprong-unyil-2.jpg",
+        "alt": "Semprong Unyil"
+      },
+      {
+        "src": "/produk/semprong-unyil-3.jpg",
+        "alt": "Semprong Unyil"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31653,
+    "slug": "sumpia-udang-romlah-oleh-oleh",
+    "name": "Sumpia Udang Romlah Oleh-oleh",
+    "price": 26000,
+    "weightGram": 100,
+    "category": "makanan",
+    "description": [
+      "Sumpia udang terbuat dari adonan kulit yang terbuat dari tepung terigu, air, telur, dan garam. Isiannya terdiri dari udang segar yang dicincang halus, wortel parut, bawang putih, bawang bombay, dan bumbu-bumbu seperti garam, merica, dan saus tiram."
+    ],
+    "images": [
+      {
+        "src": "/produk/sumpia-udang-romlah-oleh-oleh-1.jpg",
+        "alt": "Sumpia Udang Romlah Oleh-oleh"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31324,
+    "slug": "telur-gabus-manis",
+    "name": "Telur Gabus Manis",
+    "price": 15000,
+    "weightGram": 150,
+    "category": "makanan",
+    "description": [
+      "Kue gabus yang khas kali ini mpok sediain nyang rasa manis. Rasa manis gula merah dengan kue gabus yang khas jadi padanan yang oke."
+    ],
+    "images": [
+      {
+        "src": "/produk/telur-gabus-manis-1.jpg",
+        "alt": "Telur Gabus Manis"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 861,
+    "slug": "teng-teng-kacang",
+    "name": "Teng-teng Kacang",
+    "price": 18000,
+    "weightGram": 300,
+    "category": "makanan",
+    "description": [
+      "Teng – teng kacang tempo doeloe"
+    ],
+    "images": [
+      {
+        "src": "/produk/teng-teng-kacang-1.png",
+        "alt": "Teng-teng Kacang"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 793,
+    "slug": "zanana",
+    "name": "Zanana",
+    "price": 29000,
+    "weightGram": 250,
+    "category": "makanan",
+    "description": [
+      "Keripik pisang spesial"
+    ],
+    "images": [
+      {
+        "src": "/produk/zanana-1.jpg",
+        "alt": "Zanana"
+      },
+      {
+        "src": "/produk/zanana-2.jpg",
+        "alt": "Zanana"
+      }
+    ],
+    "inStock": false,
+    "isVariable": true
+  },
+  {
+    "legacyId": 31580,
+    "slug": "zanana-chips",
+    "name": "Zanana Chips",
+    "price": 25000,
+    "weightGram": 180,
+    "category": "makanan",
+    "description": [
+      "Keripik pisang banyak pilihan rasa. Rasa kekinian yang pernah ada."
+    ],
+    "images": [
+      {
+        "src": "/produk/zanana-chips-1.jpg",
+        "alt": "Zanana Chips"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 795,
+    "slug": "bir-peletok-bubuk",
+    "name": "Bir Peletok Bubuk",
+    "price": 29000,
+    "weightGram": 200,
+    "category": "minuman",
+    "description": [
+      "Yang jauhhh ga perlu khawatir",
+      "sekarang Mpo Romlah nyediain nyang bubuk.",
+      "1 Box isi 5.. Seruuu kannn ?"
+    ],
+    "images": [
+      {
+        "src": "/produk/bir-peletok-bubuk-1.jpg",
+        "alt": "Bir Peletok Bubuk"
+      },
+      {
+        "src": "/produk/bir-peletok-bubuk-2.jpg",
+        "alt": "Bir Peletok Bubuk"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31559,
+    "slug": "madu-uray-alami-botol-450g",
+    "name": "Madu Uray Alami Botol 450g",
+    "price": 89000,
+    "weightGram": 1000,
+    "category": "minuman",
+    "description": [
+      "Madu uray alami dari lebah hutan Apis Dorsata.Madu dengan berbagai nektar bunga liar yg tumbuh di hutan"
+    ],
+    "images": [
+      {
+        "src": "/produk/madu-uray-alami-botol-450g-1.jpeg",
+        "alt": "Madu Uray Alami Botol 450g"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31672,
+    "slug": "paket-ancol-panco",
+    "name": "Paket Ancol (Panco)",
+    "price": 160000,
+    "weightGram": 1000,
+    "category": "paket",
+    "description": [
+      "Asyiknya Nikmati Cemilan Lokal",
+      "-Cheesestik",
+      "-Biji Ketapang",
+      "-Sumpia Udang",
+      "-Dodol Betawi",
+      "-Kembang Goyang",
+      "Free tas jinjing spunbond Ramah lingkungan"
+    ],
+    "images": [
+      {
+        "src": "/produk/paket-ancol-panco-1.jpeg",
+        "alt": "Paket Ancol (Panco)"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31673,
+    "slug": "paket-monas-panas",
+    "name": "Paket Monas (Panas)",
+    "price": 215000,
+    "weightGram": 2000,
+    "category": "paket",
+    "description": [
+      "Makan oleh-oleh Nikmat Aseli Spesial",
+      "-Kentang Kriuk",
+      "-Bir Pletok Cair",
+      "-Sumpia Udang",
+      "-Cheestik",
+      "-Egg Royal (Semprong)",
+      "-Balado Ketela (Keripik)",
+      "Free Paperbag cantik Ramah Lingkungan"
+    ],
+    "images": [
+      {
+        "src": "/produk/paket-monas-panas-1.jpeg",
+        "alt": "Paket Monas (Panas)"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  },
+  {
+    "legacyId": 31668,
+    "slug": "paket-tanah-abang-panah",
+    "name": "Paket Tanah Abang (Panah)",
+    "price": 110000,
+    "weightGram": 1000,
+    "category": "paket",
+    "description": [
+      "Terlengkap Asli Nikmat Aneka Hidangan Andalan Betawi Asyik Ngangenin Gurih",
+      "-Biji Ketapang",
+      "-Dodol Betawi",
+      "-Cheese Stik",
+      "-Keripik Bawang",
+      "Free Paperbag Cokelat (Ramah lingkungan)"
+    ],
+    "images": [
+      {
+        "src": "/produk/paket-tanah-abang-panah-1.jpeg",
+        "alt": "Paket Tanah Abang (Panah)"
+      }
+    ],
+    "inStock": true,
+    "isVariable": false
+  }
+]

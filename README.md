@@ -1,36 +1,65 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# romlah-web
 
-## Getting Started
+Bangun ulang romlah.com dengan Next.js. Tahap ini **UI saja** — database belum
+disambungkan, sesuai permintaan.
 
-First, run the development server:
+## Menjalankan
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm dev        # http://localhost:3311
+pnpm build      # produksi
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Yang sudah jadi
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Rute | Isi |
+| --- | --- |
+| `/` | Beranda: hero, chip kategori, produk unggulan, paket, alasan, outlet |
+| `/katalog` | 39 produk, penyaring kategori/harga/stok + pengurutan, semuanya lewat URL |
+| `/produk/[slug]` | Galeri, harga, berat, deskripsi, beli, JSON-LD `Product` |
+| `/keranjang` | Keranjang, alamat, ongkir, dua jalur checkout |
+| `/toko` | Alamat & jam buka tiga outlet |
+| `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Semua halaman produk dibangun statis saat `build` (39 halaman SSG).
 
-## Learn More
+## Data
 
-To learn more about Next.js, take a look at the following resources:
+`src/data/products.json` — hasil migrasi dari WooCommerce lama lewat Store API
+publik. 39 produk, 66 foto di `public/produk/`. Foto duplikat yang ada di situs
+lama sudah disaring.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Satu koreksi data:** `Sagon Bakar Romlah` (legacyId 31526) tercatat beratnya
+`300` kg di WooCommerce — hampir pasti salah entri untuk 300 gram. Nilai itu
+ditimpa di `scripts/extract.py` lewat `WEIGHT_OVERRIDE_G` dan **perlu
+dikonfirmasi pemilik**. Tanpa koreksi ini, ongkir untuk produk tersebut mustahil.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Yang masih tiruan
 
-## Deploy on Vercel
+Ditandai jelas di kode dan di layar, bukan disembunyikan:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Ongkir** (`src/lib/shipping.ts`) — bentuk data sudah persis RajaOngkir V2
+  (Komerce), tapi isinya masih data contoh. Di layar muncul peringatan "Tarif
+  contoh". Yang perlu diganti hanya isi `cariTujuan()` dan `hitungOngkir()`;
+  pemanggilannya sudah lewat route handler supaya API key tidak bocor ke browser.
+- **Pembayaran** — tombol "Bayar sekarang" sengaja dinonaktifkan sampai kunci
+  Midtrans ada.
+- **Nomor pesanan** — dibuat di browser, belum tersimpan. Harus pindah ke server
+  begitu database aktif.
+- **Testimoni** (`TESTIMONIALS` di `src/data/site.ts`) — sengaja kosong.
+  Bagiannya tidak dirender selama larik itu kosong. Tidak diisi kutipan karangan.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Seam untuk database
+
+Halaman tidak pernah menyentuh sumber data langsung. Semuanya lewat
+`src/lib/catalog.ts`, dan seluruh fungsinya sudah `async` supaya penggantian ke
+database tidak mengubah tanda tangan fungsi di pemanggilnya.
+
+Keranjang ada di `localStorage` lewat `useSyncExternalStore`
+(`src/components/cart-provider.tsx`), tersinkron antar tab.
+
+## Belum dibuat
+
+`/cerita`, `/reseller`, `/blog` — menunggu keputusan pemilik soal nasib 15
+artikel lama (2017–2018) dan apakah program reseller masih berjalan.

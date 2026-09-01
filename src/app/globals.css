@@ -1,26 +1,120 @@
 @import "tailwindcss";
 
+/* ─────────────────────────────────────────────────────────────
+   Token warna Romlah.
+
+   Situs ini SENGAJA hanya bertema terang. Foto makanan terbaca
+   paling baik di latar terang, dan tanpa tombol pengalih tema,
+   mengikuti setelan sistem berarti sebagian pengunjung tetap
+   melihat versi gelap. `color-scheme: light` memaksa kontrol
+   bawaan browser — kolom isian, scrollbar — ikut terang.
+
+   Palet gelapnya masih tersimpan di riwayat git kalau suatu saat
+   mau dihidupkan lagi di balik tombol pengalih.
+   ───────────────────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+
+  --bg: #fdfbf9;
+  --surface: #ffffff;
+  --sunken: #f5f0eb;
+  --ink: #1b1512;
+  --ink-2: #4e443d;
+  --muted: #8c8078;
+  --line: #e6ded6;
+  --line-2: #cfc3b8;
+
+  --jingga: #d9531b;
+  --jingga-ink: #ffffff;
+  --jingga-soft: #fcede4;
+
+  --pandan: #2f7a4f;
+  --pandan-ink: #ffffff;
+  --pandan-soft: #e6f1ea;
+
+  --warn: #8a5d06;
+  --warn-soft: #fbf1da;
+
+  --shadow-sm: 0 1px 2px rgba(27, 21, 18, 0.06);
+  --shadow-md: 0 2px 4px rgba(27, 21, 18, 0.05), 0 12px 28px -14px rgba(27, 21, 18, 0.22);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-line-2: var(--line-2);
+  --color-jingga: var(--jingga);
+  --color-jingga-ink: var(--jingga-ink);
+  --color-jingga-soft: var(--jingga-soft);
+  --color-pandan: var(--pandan);
+  --color-pandan-ink: var(--pandan-ink);
+  --color-pandan-soft: var(--pandan-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-gabarito), var(--font-jakarta), ui-sans-serif, sans-serif;
+
+  --shadow-card: var(--shadow-sm);
+  --shadow-float: var(--shadow-md);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv11";
+}
+
+/* Angka rupiah selalu sejajar kolomnya. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Motif tumpal — jajaran segitiga batik Betawi, dipakai sebagai pembatas.
+   Diwarnai lewat background-color agar ikut berubah di mode gelap. */
+.tumpal {
+  height: 10px;
+  background-color: var(--jingga);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10'%3E%3Cpath d='M0 10 L7 0 L14 10 Z' fill='%23000'/%3E%3C/svg%3E") repeat-x left center;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='10'%3E%3Cpath d='M0 10 L7 0 L14 10 Z' fill='%23000'/%3E%3C/svg%3E") repeat-x left center;
+}
+
+/* Deret yang bisa digeser mendatar, tanpa scrollbar yang mengganggu. */
+.rail {
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+.rail > * {
+  scroll-snap-align: start;
+}
+
+:focus-visible {
+  outline: 2px solid var(--jingga);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
