@@ -59,6 +59,35 @@ database tidak mengubah tanda tangan fungsi di pemanggilnya.
 Keranjang ada di `localStorage` lewat `useSyncExternalStore`
 (`src/components/cart-provider.tsx`), tersinkron antar tab.
 
+## Deploy ke Hostinger
+
+Lingkungan build Hostinger (terbaca dari API mereka, bukan diasumsikan):
+Node 22, tipe aplikasi `next`, keluaran `.next`, sumber `git`, dan package
+manager **tidak diset** sehingga dideteksi otomatis dari lockfile — jatuh ke
+pnpm, yang dijalankan lewat **corepack dengan pnpm 11.25.0**.
+
+Tiga hal yang membuat build pertama gagal, dan cara mengatasinya:
+
+1. **Pin versi pnpm.** Scaffolder menulis `"packageManager": "pnpm@10.33.2"`
+   mengikuti pnpm mesin pengembang. Di bawah corepack, pnpm menolak berpindah
+   versi, jadi pin itu bentrok dengan pnpm 11.25.0 milik Hostinger dan
+   instalasi berhenti. Field itu **dibuang** — tanpa pin, pnpm versi apa pun
+   yang dipakai host tidak akan pernah bentrok lagi. Jangan tambahkan kembali.
+
+2. **Kebijakan `minimumReleaseAge`.** pnpm 11 menolak paket yang baru terbit
+   sebagai perlindungan rantai pasok, dan lockfile lama memuat beberapa paket
+   semacam itu. Lockfile dibuat ulang memakai pnpm 11 dengan kebijakan tetap
+   **aktif**, sehingga resolusinya sendiri sudah lolos. Daftar
+   `minimumReleaseAgeExclude` di `pnpm-workspace.yaml` dibuat otomatis oleh
+   pnpm untuk paket Next.js yang versinya dipatok persis.
+
+3. **Skrip pascapasang dependensi.** pnpm 11 keluar dengan kode 1 bila ada
+   skrip build yang tertahan tanpa dinyatakan. Keputusannya dicatat eksplisit
+   di `pnpm-workspace.yaml`.
+
+Lockfile tetap `lockfileVersion: 9.0` — format itu dibaca pnpm 11 tanpa
+masalah; kegagalannya dulu murni soal kebijakan, bukan format.
+
 ## Belum dibuat
 
 `/cerita`, `/reseller`, `/blog` — menunggu keputusan pemilik soal nasib 15

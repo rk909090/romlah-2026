@@ -1,3 +1,37 @@
-ignoredBuiltDependencies:
-  - sharp
+# Disetel agar cocok dengan lingkungan build Hostinger: pnpm 11.25.0 yang
+# dijalankan lewat corepack di Node 22.
+#
+# minimumReleaseAgeExclude
+#   pnpm 11 menolak paket yang baru terbit sebagai perlindungan rantai pasok.
+#   Kebijakannya dibiarkan AKTIF — lockfile dibuat ulang oleh pnpm 11 sendiri
+#   sehingga resolusinya lolos. Daftar di bawah dihasilkan otomatis oleh pnpm
+#   untuk paket Next.js yang versinya dipatok persis di package.json, jadi
+#   tidak bisa dimundurkan ke versi yang lebih tua.
+minimumReleaseAgeExclude:
+  - '@next/env@16.3.4'
+  - '@next/eslint-plugin-next@16.3.4'
+  - '@next/swc-darwin-arm64@16.3.4'
+  - '@next/swc-darwin-x64@16.3.4'
+  - '@next/swc-linux-arm64-gnu@16.3.4'
+  - '@next/swc-linux-arm64-musl@16.3.4'
+  - '@next/swc-linux-x64-gnu@16.3.4'
+  - '@next/swc-linux-x64-musl@16.3.4'
+  - '@next/swc-win32-arm64-msvc@16.3.4'
+  - '@next/swc-win32-x64-msvc@16.3.4'
+  - eslint-config-next@16.3.4
+  - next@16.3.4
+
+# onlyBuiltDependencies
+#   pnpm 11 keluar dengan kode 1 bila ada skrip pascapasang yang tertahan
+#   tanpa keputusan eksplisit. Ini daftar izin: hanya paket di sini yang
+#   boleh menjalankan skripnya.
+#
+#   unrs-resolver dipakai eslint-config-next dan butuh binding native-nya.
+#
+#   sharp SENGAJA tidak didaftarkan. Next.js memakainya untuk optimasi
+#   gambar di produksi, tapi binernya datang dari paket prabangun
+#   (@img/sharp-linux-x64 dan @img/sharp-libvips-linux-x64 ada di lockfile),
+#   bukan dari skrip pascapasang. Menjalankan skripnya justru berisiko
+#   memicu kompilasi libvips dari sumber.
+onlyBuiltDependencies:
   - unrs-resolver
