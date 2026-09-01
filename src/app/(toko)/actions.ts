@@ -2,6 +2,8 @@
 
 import { SITE } from "@/data/site";
 import { rupiah } from "@/lib/format";
+import { execute } from "@/lib/db";
+import { buatTransaksiSnap, midtransAktif, MidtransError } from "@/lib/midtrans";
 import { simpanPesanan, type PesananMasuk, type PesananTersimpan } from "@/lib/orders";
 
 export type HasilPesanan =
@@ -62,6 +64,70 @@ export async function buatPesanan(masuk: PesananMasuk): Promise<HasilPesanan> {
         ? e.message
         : "Pesanan gagal disimpan. Coba lagi sebentar lagi.";
     console.error("[buatPesanan]", e);
+    return { ok: false, error: pesan };
+  }
+}
+
+/* ── Bayar sekarang lewat Midtrans ─────────────────────────────────── */
+export type HasilBayar = { ok: true; redirectUrl: string; orderNumber: string } | { ok: false; error: string };
+
+export async function bayarSekarang(masuk: PesananMasuk): Promise<HasilBayar> {
+  if (!midtransAktif()) {
+    return { ok: false, error: "Pembayaran online belum aktif. Silakan pesan lewat WhatsApp." };
+  }
+
+  let pesanan: PesananTersimpan;
+  try {
+    pesanan = await simpanPesanan({ ...masuk, channel: "web" });
+  } catch (e) {
+    console.error("[bayarSekarang/simpan]", e);
+    const pesan =
+      e instanceof Error && e.message && !/^(ER_|ECONN|ETIMEDOUT)/.test(e.message)
+        ? e.message
+        : "Pesanan gagal disimpan. Coba lagi sebentar lagi.";
+    return { ok: false, error: pesan };
+  }
+
+  // Midtrans menolak transaksi bila jumlah item_details tidak sama persis
+  // dengan gross_amount, jadi ongkir ikut jadi satu baris.
+  const items = pesanan.items.map((i, n) => ({
+    id: `item-${n + 1}`,
+    name: i.name.slice(0, 50),
+    price: i.unitPrice,
+    quantity: i.qty,
+  }));
+  if (pesanan.shippingCost > 0) {
+    items.push({
+      id: "ongkir",
+      name: `Ongkir ${pesanan.kurir} ${pesanan.layanan}`.slice(0, 50),
+      price: pesanan.shippingCost,
+      quantity: 1,
+    });
+  }
+
+  try {
+    const { redirectUrl } = await buatTransaksiSnap({
+      orderId: pesanan.orderNumber,
+      grossAmount: pesanan.total,
+      items,
+      nama: masuk.nama.trim(),
+      telepon: masuk.telepon.trim(),
+    });
+
+    await execute(`UPDATE orders SET midtrans_order_id = ? WHERE id = ?`, [
+      pesanan.orderNumber,
+      pesanan.orderId,
+    ]);
+
+    return { ok: true, redirectUrl, orderNumber: pesanan.orderNumber };
+  } catch (e) {
+    console.error("[bayarSekarang/midtrans]", e);
+    // Pesanannya sudah tersimpan, jadi pembeli tidak kehilangan apa pun —
+    // ia bisa melanjutkan lewat WhatsApp memakai nomor yang sama.
+    const pesan =
+      e instanceof MidtransError
+        ? `${e.message} Pesanan Anda tetap tersimpan dengan nomor ${pesanan.orderNumber}.`
+        : `Pembayaran gagal dimulai. Pesanan Anda tersimpan dengan nomor ${pesanan.orderNumber}.`;
     return { ok: false, error: pesan };
   }
 }

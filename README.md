@@ -55,8 +55,13 @@ yang ikut ter-commit — `.env*` diabaikan git, kecuali `.env.example`.
 node scripts/db-setup.mjs       # terapkan skema + isi 39 produk (aman diulang)
 node scripts/db-smoke-test.mjs  # jalankan setiap kueri aplikasi terhadap DB
 node scripts/password-test.mjs  # uji hash & verifikasi kata sandi
-node --import ./scripts/ts-resolver.mjs scripts/order-test.mjs   # uji simpan pesanan
+node --import ./scripts/ts-resolver.mjs scripts/order-test.mjs     # uji simpan pesanan
+node --import ./scripts/ts-resolver.mjs scripts/midtrans-test.mjs # uji tanda tangan & pemetaan status
+node scripts/rajaongkir-origin.mjs                                # cari ID outlet asal
 ```
+
+`midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan
+kredensial memakai endpoint baca-saja pada nomor pesanan yang tidak ada.
 
 `order-test.mjs` menyimpan pesanan sungguhan memakai nomor uji `62899999…`
 lalu menghapus seluruh jejaknya, jadi aman dijalankan pada basis data yang

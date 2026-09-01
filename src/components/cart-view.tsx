@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { buatPesanan, type HasilPesanan } from "@/app/(toko)/actions";
+import { bayarSekarang, buatPesanan, type HasilPesanan } from "@/app/(toko)/actions";
 import { GRATIS_ONGKIR_MIN } from "@/data/site";
 import { berat, rupiah } from "@/lib/format";
 import type { Destination, ShippingRate } from "@/lib/shipping";
@@ -12,7 +12,7 @@ import { resolveLines, useCart } from "./cart-provider";
 
 type Tahap = "keranjang" | "konfirmasi";
 
-export function CartView({ products }: { products: Product[] }) {
+export function CartView({ products, bayarAktif }: { products: Product[]; bayarAktif: boolean }) {
   const { lines, ready, ubahQty, hapus, kosongkan } = useCart();
   const items = useMemo(() => resolveLines(lines, products), [lines, products]);
 
@@ -25,6 +25,7 @@ export function CartView({ products }: { products: Product[] }) {
   const [tarif, setTarif] = useState<ShippingRate[]>([]);
   const [pilihTarif, setPilihTarif] = useState<ShippingRate | null>(null);
   const [tarifContoh, setTarifContoh] = useState(false);
+  const [galatOngkir, setGalatOngkir] = useState("");
   const [memuat, setMemuat] = useState(false);
 
   const [nama, setNama] = useState("");
@@ -34,6 +35,7 @@ export function CartView({ products }: { products: Product[] }) {
   const [pesanan, setPesanan] = useState<Extract<HasilPesanan, { ok: true }> | null>(null);
   const [galat, setGalat] = useState("");
   const [mengirim, setMengirim] = useState(false);
+  const [membayar, setMembayar] = useState(false);
 
   /** Ketikan baru berarti tujuan lama tidak berlaku lagi — dibereskan di sini,
    *  di penangan peristiwa, bukan lewat effect. */
@@ -53,6 +55,7 @@ export function CartView({ products }: { products: Product[] }) {
         const r = await fetch(`/api/ongkir/tujuan?q=${encodeURIComponent(q)}`);
         const j = await r.json();
         setHasil(j.data ?? []);
+        setGalatOngkir(j.error ?? "");
       } catch {
         setHasil([]);
       }
@@ -76,9 +79,13 @@ export function CartView({ products }: { products: Product[] }) {
         if (batal) return;
         setTarif(j.data ?? []);
         setTarifContoh(Boolean(j.contoh));
+        setGalatOngkir(j.error ?? "");
         setPilihTarif(j.data?.[0] ?? null);
       } catch {
-        if (!batal) setTarif([]);
+        if (!batal) {
+          setTarif([]);
+          setGalatOngkir("Perhitungan ongkir sedang bermasalah. Coba lagi sebentar lagi.");
+        }
       } finally {
         if (!batal) setMemuat(false);
       }
@@ -119,6 +126,31 @@ export function CartView({ products }: { products: Product[] }) {
     // Keranjang dikosongkan begitu pesanan tersimpan. Tanpa ini, menekan
     // kembali lalu memesan lagi akan membuat pesanan kedua yang sama.
     kosongkan();
+  }
+
+  async function bayar() {
+    if (!bisaPesan || membayar || mengirim) return;
+    setMembayar(true);
+    setGalat("");
+    const r = await bayarSekarang({
+      items: lines,
+      nama,
+      telepon,
+      alamat,
+      tujuan,
+      kurirKode: pilihTarif!.code,
+      kurirLayanan: pilihTarif!.service,
+    });
+
+    if (!r.ok) {
+      setMembayar(false);
+      setGalat(r.error);
+      return;
+    }
+    // Keranjang dikosongkan sebelum berpindah: pesanannya sudah tersimpan,
+    // dan kembali ke halaman ini tidak boleh membuat pesanan kedua.
+    kosongkan();
+    window.location.href = r.redirectUrl;
   }
 
   if (!ready) {
@@ -376,6 +408,15 @@ export function CartView({ products }: { products: Product[] }) {
                 </ul>
               )}
 
+              {galatOngkir && (
+                <p
+                  role="alert"
+                  className="mt-3 rounded-xl border border-jingga/40 bg-jingga-soft p-3 text-xs leading-relaxed text-ink-2"
+                >
+                  {galatOngkir}
+                </p>
+              )}
+
               {tarifContoh && (
                 <p className="mt-3 rounded-xl border border-warn/40 bg-warn-soft p-3 text-xs leading-relaxed text-ink-2">
                   <b>Tarif contoh.</b> Angka ini belum berasal dari RajaOngkir — masih menunggu API key. Alur dan
@@ -427,11 +468,12 @@ export function CartView({ products }: { products: Product[] }) {
           <div className="mt-5 space-y-2.5">
             <button
               type="button"
-              disabled
-              title="Aktif setelah kunci Midtrans dipasang"
-              className="w-full cursor-not-allowed rounded-xl bg-jingga px-5 py-4 text-sm font-semibold text-jingga-ink opacity-45"
+              disabled={!bayarAktif || !bisaPesan || membayar || mengirim}
+              onClick={bayar}
+              title={bayarAktif ? undefined : "Aktif setelah kunci Midtrans dipasang"}
+              className="w-full rounded-xl bg-jingga px-5 py-4 text-sm font-semibold text-jingga-ink shadow-float transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
             >
-              Bayar sekarang · QRIS, VA, kartu
+              {membayar ? "Menyiapkan pembayaran…" : "Bayar sekarang · QRIS, VA, kartu"}
             </button>
             <button
               type="button"
@@ -456,8 +498,9 @@ export function CartView({ products }: { products: Product[] }) {
           </p>
 
           <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-            Pembayaran online menunggu kunci Midtrans. Sementara ini pesanan diselesaikan lewat WhatsApp, sama seperti
-            sekarang — bedanya rinciannya sudah tersusun rapi.
+            {bayarAktif
+              ? "Bayar sekarang membuka halaman pembayaran Midtrans. Lewat WhatsApp, pesanan tetap tercatat dan pembayarannya diatur bersama admin."
+              : "Pembayaran online belum aktif. Pesanan diselesaikan lewat WhatsApp — rinciannya sudah tersusun rapi."}
           </p>
         </div>
       </aside>

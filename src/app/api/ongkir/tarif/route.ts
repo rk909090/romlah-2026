@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { AMBIL_DI_TOKO, hitungOngkir, ONGKIR_MASIH_CONTOH, type Destination } from "@/lib/shipping";
+import { AMBIL_DI_TOKO, hitungOngkir, pakaiContoh, ShippingError, type Destination } from "@/lib/shipping";
 
 /** Hitung ongkir untuk satu tujuan dan satu berat total keranjang. */
 export async function POST(request: Request) {
@@ -15,9 +15,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tujuan dan berat wajib diisi." }, { status: 400 });
   }
 
-  const kurir = await hitungOngkir(tujuan, beratGram);
-  return NextResponse.json({
-    data: [...kurir, AMBIL_DI_TOKO],
-    contoh: ONGKIR_MASIH_CONTOH,
-  });
+  try {
+    const kurir = await hitungOngkir(tujuan, beratGram);
+    // Ambil di toko selalu ditawarkan, bahkan saat tidak ada kurir yang
+    // melayani tujuan itu.
+    return NextResponse.json({ data: [...kurir, AMBIL_DI_TOKO], contoh: pakaiContoh() });
+  } catch (e) {
+    console.error("[ongkir/tarif]", e);
+    const pesan =
+      e instanceof ShippingError
+        ? e.message
+        : "Perhitungan ongkir sedang bermasalah. Coba lagi sebentar lagi.";
+    // Ambil di toko tetap dikirim supaya pembeli tidak buntu total saat
+    // layanan ongkir sedang gagal.
+    return NextResponse.json({ data: [AMBIL_DI_TOKO], contoh: false, error: pesan }, { status: 502 });
+  }
 }

@@ -1,17 +1,13 @@
 /**
- * Lapisan ongkir.
- *
- * Bentuk data dan nama field di bawah sengaja dicocokkan dengan RajaOngkir V2
- * (Komerce) supaya penggantian nanti tidak menyentuh komponen UI:
+ * Lapisan ongkir — RajaOngkir V2 (Komerce).
  *
  *   GET  https://rajaongkir.komerce.id/api/v1/destination/domestic-destination?search=
  *   POST https://rajaongkir.komerce.id/api/v1/calculate/domestic-cost
- *        origin, destination, weight (gram), courier, price
+ *        origin, destination, weight (gram), courier
  *   header: key: <API_KEY>
  *
- * API key belum ada, jadi kedua fungsi di bawah masih memakai data contoh.
- * Begitu key tersedia, hanya isi kedua fungsi ini yang diganti dengan
- * pemanggilan sungguhan dari sisi server.
+ * Seluruh pemanggilan terjadi di server. API key tidak pernah menyentuh
+ * peramban — komponen klien memanggil route handler di /api/ongkir/*.
  */
 
 export type Destination = {
@@ -33,13 +29,65 @@ export type ShippingRate = {
   etd: string;
 };
 
-/** Titik asal pengiriman: outlet Tanjung Barat. ID sebenarnya menyusul dari API. */
+const BASE = "https://rajaongkir.komerce.id/api/v1";
+
+/**
+ * Kurir yang diminta. Yang benar-benar tersedia bergantung pada paket
+ * langganan RajaOngkir; kurir di luar paket sekadar tidak muncul di hasil.
+ */
+const KURIR = process.env.RAJAONGKIR_COURIERS ?? "jne:sicepat:jnt:pos:tiki";
+
+const kunci = () => process.env.RAJAONGKIR_API_KEY?.trim() || "";
+
+/** Titik asal pengiriman: outlet Tanjung Barat. Lihat scripts/rajaongkir-origin.mjs. */
+export const ORIGIN_ID = Number(process.env.RAJAONGKIR_ORIGIN_ID ?? 0);
+
 export const ORIGIN_LABEL = "Tanjung Barat, Jagakarsa, Jakarta Selatan";
 
-/** Penanda bahwa angka yang tampil belum berasal dari RajaOngkir. */
-export const ONGKIR_MASIH_CONTOH = true;
+/**
+ * Apakah lapisan ini masih memakai data contoh.
+ *
+ * Bernilai true hanya bila API key atau ID asal belum disetel. Kalau
+ * keduanya ada, tarif SELALU dari RajaOngkir — kegagalan dilaporkan sebagai
+ * galat, tidak pernah diam-diam diganti angka karangan. Ongkir palsu di
+ * produksi berarti uang yang salah.
+ */
+export function pakaiContoh(): boolean {
+  return !kunci() || !ORIGIN_ID;
+}
 
-/** Beberapa tujuan contoh, bentuknya persis seperti jawaban RajaOngkir. */
+export class ShippingError extends Error {}
+
+async function panggil(path: string, init?: RequestInit): Promise<{ meta?: { message?: string }; data?: unknown }> {
+  let r: Response;
+  try {
+    r = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: { key: kunci(), ...(init?.headers ?? {}) },
+      // Tarif berubah; jangan sampai tersimpan di cache fetch Next.
+      cache: "no-store",
+    });
+  } catch (e) {
+    throw new ShippingError(
+      `Tidak bisa menghubungi layanan ongkir. ${e instanceof Error ? e.message : ""}`.trim(),
+    );
+  }
+
+  const teks = await r.text();
+  let j: { meta?: { message?: string }; data?: unknown };
+  try {
+    j = JSON.parse(teks) as typeof j;
+  } catch {
+    throw new ShippingError(`Jawaban layanan ongkir tidak terbaca (HTTP ${r.status}).`);
+  }
+
+  if (!r.ok) {
+    throw new ShippingError(j.meta?.message ?? `Layanan ongkir menolak permintaan (HTTP ${r.status}).`);
+  }
+  return j;
+}
+
+/* ── Data contoh, hanya dipakai saat kredensial belum disetel ────────── */
 const CONTOH_TUJUAN: Destination[] = [
   {
     id: 17471,
@@ -58,33 +106,6 @@ const CONTOH_TUJUAN: Destination[] = [
     city_name: "JAKARTA SELATAN",
     province_name: "DKI JAKARTA",
     zip_code: "12530",
-  },
-  {
-    id: 15421,
-    label: "KEMANGGISAN, PALMERAH, JAKARTA BARAT, DKI JAKARTA, 11480",
-    subdistrict_name: "KEMANGGISAN",
-    district_name: "PALMERAH",
-    city_name: "JAKARTA BARAT",
-    province_name: "DKI JAKARTA",
-    zip_code: "11480",
-  },
-  {
-    id: 22881,
-    label: "KEMANG, BOGOR, JAWA BARAT, 16310",
-    subdistrict_name: "KEMANG",
-    district_name: "KEMANG",
-    city_name: "BOGOR",
-    province_name: "JAWA BARAT",
-    zip_code: "16310",
-  },
-  {
-    id: 31555,
-    label: "SINDUHARJO, NGAGLIK, SLEMAN, DI YOGYAKARTA, 55581",
-    subdistrict_name: "SINDUHARJO",
-    district_name: "NGAGLIK",
-    city_name: "SLEMAN",
-    province_name: "DI YOGYAKARTA",
-    zip_code: "55581",
   },
   {
     id: 27103,
@@ -106,48 +127,81 @@ const CONTOH_TUJUAN: Destination[] = [
   },
 ];
 
+/* ── Pencarian tujuan ────────────────────────────────────────────────── */
 export async function cariTujuan(q: string): Promise<Destination[]> {
-  const term = q.trim().toLowerCase();
+  const term = q.trim();
   if (term.length < 3) return [];
-  return CONTOH_TUJUAN.filter((d) => d.label.toLowerCase().includes(term)).slice(0, 8);
+
+  if (pakaiContoh()) {
+    return CONTOH_TUJUAN.filter((d) => d.label.toLowerCase().includes(term.toLowerCase())).slice(0, 8);
+  }
+
+  const j = await panggil(
+    `/destination/domestic-destination?search=${encodeURIComponent(term)}&limit=10&offset=0`,
+  );
+  const data = Array.isArray(j.data) ? (j.data as Destination[]) : [];
+  return data.map((d) => ({
+    id: Number(d.id),
+    label: d.label,
+    subdistrict_name: d.subdistrict_name,
+    district_name: d.district_name,
+    city_name: d.city_name,
+    province_name: d.province_name,
+    zip_code: d.zip_code,
+  }));
 }
 
-/**
- * Tarif contoh. Rumusnya kasar dan hanya untuk menguji tampilan:
- * tarif dasar per kurir + kelipatan berat per kilogram (dibulatkan ke atas,
- * sebagaimana kurir menghitung), lalu dinaikkan untuk tujuan luar Jakarta.
- */
-export async function hitungOngkir(tujuan: Destination, beratGram: number): Promise<ShippingRate[]> {
-  const kg = Math.max(1, Math.ceil(beratGram / 1000));
-  const luarJakarta = !tujuan.province_name.includes("DKI JAKARTA");
-  const f = luarJakarta ? 2.4 : 1;
+/* ── Hitung ongkir ───────────────────────────────────────────────────── */
+type TarifMentah = {
+  name?: string;
+  code?: string;
+  service?: string;
+  description?: string;
+  cost?: number | string;
+  etd?: string;
+};
 
-  return [
-    {
-      code: "jne",
-      name: "JNE",
-      service: "REG",
-      description: "Layanan reguler",
-      cost: Math.round(10_000 * f) * kg,
-      etd: luarJakarta ? "2-3 hari" : "1-2 hari",
-    },
-    {
-      code: "jnt",
-      name: "J&T",
-      service: "EZ",
-      description: "Layanan ekonomis",
-      cost: Math.round(9_000 * f) * kg,
-      etd: luarJakarta ? "3-4 hari" : "2 hari",
-    },
-    {
-      code: "sicepat",
-      name: "SiCepat",
-      service: "BEST",
-      description: "Besok sampai tujuan",
-      cost: Math.round(24_000 * f) * kg,
-      etd: luarJakarta ? "2 hari" : "1 hari",
-    },
-  ];
+export async function hitungOngkir(tujuan: Destination, beratGram: number): Promise<ShippingRate[]> {
+  // Kurir menagih per kilogram yang dibulatkan ke atas; kirim minimal 1 kg
+  // supaya tarif yang tampil sama dengan yang nanti ditagihkan.
+  const berat = Math.max(1000, Math.ceil(beratGram));
+
+  if (pakaiContoh()) {
+    const kg = Math.ceil(berat / 1000);
+    const luarJakarta = !tujuan.province_name.includes("DKI JAKARTA");
+    const f = luarJakarta ? 2.4 : 1;
+    return [
+      { code: "jne", name: "JNE", service: "REG", description: "Layanan reguler", cost: Math.round(10_000 * f) * kg, etd: luarJakarta ? "2-3 hari" : "1-2 hari" },
+      { code: "jnt", name: "J&T", service: "EZ", description: "Layanan ekonomis", cost: Math.round(9_000 * f) * kg, etd: luarJakarta ? "3-4 hari" : "2 hari" },
+      { code: "sicepat", name: "SiCepat", service: "BEST", description: "Besok sampai tujuan", cost: Math.round(24_000 * f) * kg, etd: luarJakarta ? "2 hari" : "1 hari" },
+    ];
+  }
+
+  const body = new URLSearchParams({
+    origin: String(ORIGIN_ID),
+    destination: String(tujuan.id),
+    weight: String(berat),
+    courier: KURIR,
+  });
+
+  const j = await panggil("/calculate/domestic-cost", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  const data = Array.isArray(j.data) ? (j.data as TarifMentah[]) : [];
+  return data
+    .map((t) => ({
+      code: String(t.code ?? "").toLowerCase(),
+      name: String(t.name ?? t.code ?? "").trim(),
+      service: String(t.service ?? "").trim(),
+      description: String(t.description ?? "").trim(),
+      cost: Number(t.cost ?? 0),
+      etd: String(t.etd ?? "").trim() || "—",
+    }))
+    .filter((t) => t.cost > 0 && t.service)
+    .sort((a, b) => a.cost - b.cost);
 }
 
 /** Opsi ambil sendiri di outlet — tidak melibatkan kurir sama sekali. */

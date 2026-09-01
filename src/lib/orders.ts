@@ -14,10 +14,13 @@ export type PesananMasuk = {
   tujuan: Destination | null;
   kurirKode: string;
   kurirLayanan: string;
+  /** "whatsapp" menunggu konfirmasi admin; "web" langsung menunggu pembayaran. */
+  channel?: "web" | "whatsapp";
 };
 
 export type PesananTersimpan = {
   orderNumber: string;
+  orderId: number;
   subtotal: number;
   shippingCost: number;
   total: number;
@@ -165,6 +168,11 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
       }
     }
 
+    // Kanal menentukan status awal: pesanan WhatsApp menunggu admin
+    // mengonfirmasi, pesanan web langsung menunggu pembayaran.
+    const kanal = masuk.channel ?? "whatsapp";
+    const statusAwal = kanal === "web" ? "menunggu_bayar" : "menunggu_konfirmasi";
+
     // Tabrakan nomor sangat kecil kemungkinannya, tapi bukan nol.
     // Ulangi beberapa kali daripada menggagalkan pesanan yang sah.
     let orderNumber = "";
@@ -177,10 +185,12 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
              (order_number, customer_id, channel, status, customer_name, customer_phone,
               address, destination_id, destination_label, courier, courier_service, etd,
               subtotal, shipping_cost, total, weight_gram)
-           VALUES (?, ?, 'whatsapp', 'menunggu_konfirmasi', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderNumber,
             customerId,
+            kanal,
+            statusAwal,
             nama,
             teleponBaku,
             masuk.alamat.trim() || null,
@@ -211,11 +221,12 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
       );
     }
 
-    return orderNumber;
+    return { orderNumber, orderId };
   });
 
   return {
-    orderNumber: tersimpan,
+    orderNumber: tersimpan.orderNumber,
+    orderId: tersimpan.orderId,
     subtotal,
     shippingCost,
     total,
