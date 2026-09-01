@@ -172,16 +172,19 @@ type TarifBiteship = {
 /**
  * Biaya yang ditagihkan ke pembeli.
  *
- * Sengaja TIDAK memakai `price` mentah. Pada contoh resmi Biteship,
- * `price` (11000) sama dengan `shipping_fee` (9000) ditambah
- * `cash_on_delivery_fee` (2000) — padahal toko ini tidak melayani COD.
- * Memakai `price` berarti membebani pembeli biaya layanan yang tidak
- * dipakainya.
+ * Dihitung sebagai ongkos kirim ditambah biaya tambahan, dikurangi potongan,
+ * bukan dari field `price` mentah.
  *
- * Yang dipakai: ongkos kirim ditambah biaya tambahan, dikurangi potongan.
- * Kalau ketiganya tidak ada, barulah jatuh ke `price`.
+ * Alasannya: pada contoh di dokumentasi Biteship, `price` (11000) sama dengan
+ * `shipping_fee` (9000) ditambah `cash_on_delivery_fee` (2000), padahal toko
+ * ini tidak melayani COD.
  *
- * PERLU DICOCOKKAN dengan tagihan Biteship sungguhan begitu saldo terisi.
+ * Diperiksa terhadap tarif sungguhan (12 layanan, Jagakarsa ke Mampang
+ * Prapatan): saat COD tidak diminta, `cash_on_delivery_fee` bernilai 0 dan
+ * `price` sama persis dengan hasil hitungan ini pada SELURUH layanan. Jadi
+ * keduanya setara hari ini — bentuk ini dipertahankan sebagai penjaga bila
+ * kelak COD atau asuransi diaktifkan, agar biayanya tidak ikut tertagih
+ * tanpa diminta.
  */
 function biaya(t: TarifBiteship): number {
   const dasar = Number(t.shipping_fee ?? NaN);

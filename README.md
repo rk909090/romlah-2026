@@ -1,7 +1,7 @@
 # romlah-web
 
-Bangun ulang romlah.com dengan Next.js. Toko dan panel admin sudah berjalan di
-atas MariaDB. Pembayaran Midtrans dan ongkir RajaOngkir menunggu API key.
+Bangun ulang romlah.com dengan Next.js. Toko, panel admin, ongkir Biteship,
+dan pembayaran Midtrans sudah berjalan di atas MariaDB.
 
 ## Menjalankan
 
@@ -58,6 +58,7 @@ node scripts/password-test.mjs  # uji hash & verifikasi kata sandi
 node --import ./scripts/ts-resolver.mjs scripts/order-test.mjs     # uji simpan pesanan
 node --import ./scripts/ts-resolver.mjs scripts/midtrans-test.mjs # uji tanda tangan & pemetaan status
 node --import ./scripts/ts-resolver.mjs scripts/biteship-test.mjs # uji pencarian area & tarif
+node --import ./scripts/ts-resolver.mjs scripts/integration-test.mjs # pesanan + tarif Biteship sungguhan
 node scripts/biteship-origin.mjs 12530                            # cari ID area outlet asal
 ```
 
@@ -146,21 +147,84 @@ foto di `public/produk/`. Foto duplikat yang ada di situs lama sudah disaring.
 ditimpa di `scripts/extract.py` lewat `WEIGHT_OVERRIDE_G` dan **perlu
 dikonfirmasi pemilik**. Tanpa koreksi ini, ongkir untuk produk tersebut mustahil.
 
-## Yang masih tiruan
+## Ongkir — Biteship
 
-Ditandai jelas di kode dan di layar, bukan disembunyikan:
+`src/lib/shipping.ts` memanggil Biteship sungguhan, selalu dari server: API key
+tidak pernah menyentuh peramban karena komponen klien lewat route handler di
+`/api/ongkir/*`.
 
-- **Ongkir** (`src/lib/shipping.ts`) — bentuk data sudah persis RajaOngkir V2
-  (Komerce), tapi isinya masih data contoh. Di layar muncul peringatan "Tarif
-  contoh". Yang perlu diganti hanya isi `cariTujuan()` dan `hitungOngkir()`;
-  pemanggilannya sudah lewat route handler supaya API key tidak bocor ke browser.
-- **Pembayaran** — tombol "Bayar sekarang" sengaja dinonaktifkan sampai kunci
-  Midtrans ada.
-- **Pembayaran** — hanya itu yang tersisa. Status `dibayar` masih ditandai
-  manual di panel setelah transfer masuk; nanti webhook Midtrans yang
-  menandainya.
+```
+GET  https://api.biteship.com/v1/maps/areas?countries=ID&input=<q>&type=single
+POST https://api.biteship.com/v1/rates/couriers
+header: Authorization: <api key>        (mentah, tanpa "Bearer")
+```
+
+Butuh dua nilai: `BITESHIP_API_KEY` dan `BITESHIP_ORIGIN_AREA_ID`. Cari ID area
+outlet dengan `node scripts/biteship-origin.mjs 12530`.
+
+**ID area Biteship berupa STRING** (`IDNP6IDNC148IDND837IDZ12530`), bukan
+angka. Kolom `destination_id` di `orders` dan `customer_addresses` karena itu
+bertipe `VARCHAR(64)`.
+
+Pencarian area paling andal memakai **kode pos**. Nama kelurahan sering meleset
+karena Biteship hanya turun sampai tingkat kecamatan — tidak ada tingkat
+kelurahan.
+
+Kalau salah satu nilai belum diisi, lapisan ini memakai tarif contoh dan
+halaman keranjang menampilkan peringatannya. Kalau keduanya ada, tarif SELALU
+dari Biteship; kegagalan dilaporkan sebagai galat di layar, tidak pernah
+diam-diam diganti angka karangan.
+
+Berat dibulatkan ke minimal 1 kg sebelum dikirim, sesuai cara kurir menagih.
+
+**Biaya yang ditagihkan bukan field `price` mentah**, melainkan
+`shipping_fee + surcharge - discount`. Pada contoh di dokumentasi Biteship,
+`price` (11000) sama dengan `shipping_fee` (9000) ditambah
+`cash_on_delivery_fee` (2000), padahal toko ini tidak melayani COD. Diperiksa
+terhadap tarif sungguhan: saat COD tidak diminta, `cash_on_delivery_fee`
+bernilai 0 dan kedua cara menghasilkan angka yang sama persis pada seluruh
+layanan. Bentuk ini dipertahankan sebagai penjaga bila kelak COD atau asuransi
+diaktifkan.
+
+**Catatan operasional:** API tarif menolak permintaan bila saldo akun Biteship
+kosong (`No sufficient balance to call rates API`), bahkan pada kunci test
+mode. Galat itu muncul sebelum validasi apa pun — kalau tarif tiba-tiba
+berhenti muncul, periksa saldo lebih dulu.
+
+## Pembayaran — Midtrans Snap
+
+`src/lib/midtrans.ts` ditulis langsung di atas HTTP, bukan lewat pustaka
+`midtrans-client`, karena yang dipakai hanya dua endpoint dan satu verifikasi
+tanda tangan. Alurnya memakai `redirect_url` dari Snap, bukan `snap.js` di
+peramban: satu berkas skrip lebih sedikit, dan client key tidak perlu ikut
+dikirim ke halaman.
+
+**Webhook wajib didaftarkan di dasbor Midtrans:**
+
+```
+https://<domain>/api/midtrans/notifikasi
+```
+
+Status pesanan **hanya** berubah dari webhook itu, tidak pernah dari halaman
+sukses yang dibuka peramban — halaman itu bisa dipalsukan siapa saja. Setiap
+notifikasi diverifikasi dengan `SHA512(order_id + status_code + gross_amount +
+serverKey)`, jumlahnya dicocokkan dengan yang tersimpan, dan pesanan yang sudah
+`dikirim`/`selesai` tidak bisa dimundurkan oleh notifikasi susulan.
+
+Masa berlaku transaksi disetel 24 jam. Bawaan QRIS hanya 5 menit — terlalu
+pendek untuk pembeli yang harus berpindah aplikasi dulu.
+
+`MIDTRANS_IS_PRODUCTION=true` memakai `app.midtrans.com`, artinya **uang
+sungguhan**. Tanpa `MIDTRANS_SERVER_KEY`, tombol "Bayar sekarang" nonaktif dan
+pesanan tetap bisa diselesaikan lewat WhatsApp.
+
+## Yang masih menunggu
+
 - **Testimoni** (`TESTIMONIALS` di `src/data/site.ts`) — sengaja kosong.
-  Bagiannya tidak dirender selama larik itu kosong. Tidak diisi kutipan karangan.
+  Bagiannya tidak dirender selama larik itu kosong. Tidak diisi kutipan
+  karangan.
+- **Ulasan produk** — belum ada, sehingga `aggregateRating` di JSON-LD juga
+  belum ada dan hasil pencarian Google masih tanpa bintang.
 
 ## Lapisan data
 
