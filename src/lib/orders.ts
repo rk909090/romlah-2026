@@ -11,8 +11,11 @@ export type PesananMasuk = {
   items: ItemMasuk[];
   nama: string;
   telepon: string;
-  /** Opsional. Dipakai untuk struk Midtrans dan pemberitahuan kelak. */
-  email?: string;
+  /**
+   * WAJIB. Bukti transaksi dikirim ke sini, dan Midtrans memakainya untuk
+   * struk pembayaran. Dijadikan wajib atas permintaan pemilik toko.
+   */
+  email: string;
   alamat: string;
   tujuan: Destination | null;
   kurirKode: string;
@@ -84,7 +87,8 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
 
   if (!nama) throw new Error("Nama penerima wajib diisi.");
   if (teleponBaku.length < 10) throw new Error("Nomor WhatsApp tidak valid.");
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if (!email) throw new Error("Email wajib diisi — bukti transaksi dikirim ke sana.");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     throw new Error("Format email tidak valid.");
   }
   if (masuk.items.length === 0) throw new Error("Keranjang kosong.");

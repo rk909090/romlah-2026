@@ -335,3 +335,27 @@ ALTER TABLE orders ADD KEY IF NOT EXISTS idx_orders_promo (promo_code);
 -- hubungannya dengan apa yang ingin dijual.
 ALTER TABLE products ADD COLUMN IF NOT EXISTS featured_rank INT UNSIGNED NULL;
 ALTER TABLE products ADD KEY IF NOT EXISTS idx_products_unggulan (featured_rank);
+
+-- ── Akun pelanggan ────────────────────────────────────────────────────
+-- Pelanggan sudah punya barisnya sendiri di `customers`, dikunci nomor
+-- telepon. Yang ditambahkan di sini cuma kata sandi, supaya orangnya bisa
+-- masuk dan melihat riwayat pesanannya.
+--
+-- Kata sandi memakai scrypt bawaan Node, sama seperti admin: satu fungsi
+-- untuk keduanya, tidak ada binding native.
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255) NULL;
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS last_login_at DATETIME NULL;
+
+-- Token disimpan sebagai hash, bukan nilai aslinya — sama seperti sesi admin.
+CREATE TABLE IF NOT EXISTS customer_sessions (
+  token_hash  CHAR(64)      NOT NULL,
+  customer_id INT UNSIGNED  NOT NULL,
+  expires_at  DATETIME      NOT NULL,
+  created_at  DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  user_agent  VARCHAR(255)  NULL,
+  PRIMARY KEY (token_hash),
+  KEY idx_customer_sessions_customer (customer_id),
+  KEY idx_customer_sessions_expires (expires_at),
+  CONSTRAINT fk_customer_sessions_customer FOREIGN KEY (customer_id)
+    REFERENCES customers (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

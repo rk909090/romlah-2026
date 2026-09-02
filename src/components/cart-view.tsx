@@ -12,6 +12,7 @@ import {
   type GratisOngkir,
 } from "@/lib/promo";
 import type { Destination, ShippingRate } from "@/lib/shipping";
+import { MAKS_DIGIT_TELEPON, saringAngka } from "@/lib/telepon";
 import type { Product } from "@/lib/types";
 import { resolveLines, useCart } from "./cart-provider";
 import { IkonWa } from "./wa-button";
@@ -149,12 +150,17 @@ export function CartView({
   // Alamat lengkap wajib untuk pengiriman kurir: tanpa nama jalan, paketnya
   // tidak bisa diantar. Ambil di toko tidak memerlukannya.
   const perluAlamat = pilihTarif?.code !== "pickup";
+  // Email wajib: bukti transaksi dikirim ke sana. Bentuknya diperiksa di sini
+  // supaya salah ketik ketahuan sebelum tombolnya ditekan, dan diperiksa lagi
+  // di server karena pemeriksaan di peramban tidak mengikat apa pun.
+  const emailSah = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const bisaPesan = Boolean(
     items.length > 0 &&
       tujuan &&
       pilihTarif &&
       nama.trim() &&
       telepon.trim() &&
+      emailSah &&
       (!perluAlamat || alamat.trim()),
   );
 
@@ -162,6 +168,8 @@ export function CartView({
   const belumLengkap: string[] = [];
   if (!nama.trim()) belumLengkap.push("nama");
   if (!telepon.trim()) belumLengkap.push("WhatsApp");
+  if (!email.trim()) belumLengkap.push("email");
+  else if (!emailSah) belumLengkap.push("email yang benar");
   if (perluAlamat && !alamat.trim()) belumLengkap.push("alamat lengkap");
   if (!tujuan) belumLengkap.push("kecamatan atau kode pos");
   else if (!pilihTarif) belumLengkap.push("pilihan kurir");
@@ -410,8 +418,14 @@ export function CartView({
               <span className={kelasLabel}>Nomor WhatsApp</span>
               <input
                 value={telepon}
-                onChange={(e) => setTelepon(e.target.value)}
-                inputMode="tel"
+                // Huruf disaring saat diketik. inputMode saja tidak cukup:
+                // ia hanya memilihkan papan ketik di ponsel, dan
+                // <input type="tel"> memang mengizinkan huruf.
+                onChange={(e) => setTelepon(saringAngka(e.target.value))}
+                type="tel"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={MAKS_DIGIT_TELEPON}
                 autoComplete="tel"
                 className={kelasInput}
                 placeholder="08…"
@@ -420,17 +434,19 @@ export function CartView({
           </div>
 
           <label className="mt-3 block">
-            <span className={kelasLabel}>
-              Email <span className="normal-case">(opsional)</span>
-            </span>
+            <span className={kelasLabel}>Email</span>
             <input
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               type="email"
+              required
               autoComplete="email"
               className={kelasInput}
-              placeholder="untuk struk pembayaran"
+              placeholder="nama@email.com"
             />
+            <span className="mt-1 block text-xs text-muted">
+              Bukti transaksi dikirim ke alamat ini.
+            </span>
           </label>
 
           {/* Alamat lengkap tidak lagi disembunyikan sampai tujuan dipilih.
@@ -522,7 +538,20 @@ export function CartView({
                 <ul className="mt-3 space-y-2">
                   {tarif.map((t) => {
                     const aktif = pilihTarif?.code === t.code && pilihTarif?.service === t.service;
-                    const gratis = gratisOngkir && t.code !== "pickup";
+                    // Harga yang BENAR-BENAR ditagih untuk opsi ini, dihitung
+                    // dengan fungsi yang sama seperti ringkasan dan server.
+                    //
+                    // Dulu di sini cuma `gratisOngkir && …`. Waktu `gratisOngkir`
+                    // masih boolean itu benar; begitu ia berganti jadi objek
+                    // pengaturan, ekspresinya selalu bernilai benar — dan
+                    // SELURUH opsi tertulis "Gratis" walau programnya mati.
+                    const bayar = ongkirSetelahProgram(
+                      t.cost,
+                      subtotal,
+                      gratisOngkir,
+                      t.code === "pickup",
+                    );
+                    const dipotong = t.cost - bayar;
                     return (
                       <li key={`${t.code}-${t.service}`}>
                         <button
@@ -540,14 +569,14 @@ export function CartView({
                               {t.description} · {t.etd}
                             </span>
                           </span>
-                          {/* Saat gratis ongkir aktif, tarif asli tetap ditampilkan
+                          {/* Kalau ada potongan, tarif aslinya tetap ditampilkan
                               dicoret supaya pembeli tahu berapa yang dihemat. */}
                           <span className="tabular flex shrink-0 items-baseline gap-2 text-sm font-bold">
-                            {gratis && t.cost > 0 && (
+                            {dipotong > 0 && (
                               <s className="font-medium text-muted">{rupiah(t.cost)}</s>
                             )}
-                            <span className={t.cost === 0 || gratis ? "text-pandan" : ""}>
-                              {t.cost === 0 || gratis ? "Gratis" : rupiah(t.cost)}
+                            <span className={bayar === 0 ? "text-pandan" : ""}>
+                              {bayar === 0 ? "Gratis" : rupiah(bayar)}
                             </span>
                           </span>
                         </button>

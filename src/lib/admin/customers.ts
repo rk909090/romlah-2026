@@ -1,4 +1,5 @@
 import { execute, query, queryOne, type SqlParam } from "../db";
+import { normalkanTelepon } from "../telepon";
 
 export type AdminCustomer = {
   id: number;
@@ -12,30 +13,10 @@ export type AdminCustomer = {
   totalSpent: number;
 };
 
-/**
- * Samakan bentuk nomor telepon Indonesia.
- *
- * "0812-3456-7890", "+62 812 3456 7890", dan "62812345678 90" harus menunjuk
- * orang yang sama, kalau tidak satu pembeli akan tercatat sebagai beberapa
- * pelanggan berbeda dan riwayatnya pecah.
- *
- * Bentuk baku: hanya angka, berawalan 62.
- */
-export function normalkanTelepon(mentah: string): string {
-  const n = mentah.replace(/\D/g, "");
-  if (n.startsWith("62")) return n;
-  if (n.startsWith("0")) return "62" + n.slice(1);
-  if (n.startsWith("8")) return "62" + n; // orang sering menulis tanpa nol depan
-  return n;
-}
-
-/** Tampilkan sebagai +62 812-3456-7890. */
-export function tampilkanTelepon(baku: string): string {
-  if (!baku.startsWith("62")) return baku;
-  const sisa = baku.slice(2);
-  const p = sisa.match(/^(\d{3})(\d{3,4})(\d{0,6})$/);
-  return p ? `+62 ${p[1]}-${p[2]}${p[3] ? "-" + p[3] : ""}` : `+${baku}`;
-}
+// Diteruskan lagi supaya pemanggil lama tidak perlu diubah. Definisinya
+// pindah ke lib/telepon.ts yang tidak menyentuh basis data, karena kolom
+// isian nomor di sisi klien juga membutuhkannya.
+export { normalkanTelepon, tampilkanTelepon } from "../telepon";
 
 const PILIH = `
   SELECT c.id, c.phone, c.name, c.email, c.note,

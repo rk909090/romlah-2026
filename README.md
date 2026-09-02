@@ -21,6 +21,8 @@ pnpm build      # produksi
 | `/keranjang` | Keranjang, alamat lengkap, email opsional, ongkir, dua jalur checkout |
 | `/toko` | Alamat & jam buka outlet Tanjung Barat, plus toko Tokopedia |
 | `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
+| `/akun` | Riwayat pesanan pelanggan yang sedang masuk |
+| `/akun/masuk` | Masuk, dan menetapkan kata sandi dengan bukti nomor pesanan |
 | `/api/produk` | Ringkasan produk untuk keranjang mini |
 | `/admin/*` | Panel admin — lihat bagian tersendiri di bawah |
 
@@ -32,10 +34,10 @@ dikembalikan ke SSG untuk mempercepatnya.
 
 ## Basis data
 
-MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — tiga belas tabel:
-`admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
-`customers`, `customer_addresses`, `orders`, `order_items`, `package_items`,
-`wa_leads`, `settings`, `promo_codes`.
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — empat belas
+tabel: `admin_users`, `admin_sessions`, `categories`, `products`,
+`product_images`, `customers`, `customer_addresses`, `orders`, `order_items`,
+`package_items`, `wa_leads`, `settings`, `promo_codes`, `customer_sessions`.
 
 **Server basis datanya berjalan di UTC**, sedangkan tokonya di Jakarta (WIB,
 UTC+7) — diperiksa langsung: `NOW()` sama persis dengan `UTC_TIMESTAMP()`.
@@ -73,6 +75,7 @@ node scripts/sync-deskripsi.mjs --tulis  # dorong deskripsi ke DB (hanya kolom d
 node --import ./scripts/ts-resolver.mjs scripts/paket-lead-test.mjs # uji paket & prospek WA
 node --import ./scripts/ts-resolver.mjs scripts/rentang-promo-test.mjs # uji rentang tanggal & program
 node --import ./scripts/ts-resolver.mjs scripts/promo-test.mjs # uji kode promo & kuota serentak
+node --import ./scripts/ts-resolver.mjs scripts/akun-test.mjs  # uji akun pelanggan & bukti kepemilikan
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan
@@ -201,7 +204,11 @@ sehingga baris yang belum pernah ditulis — atau yang isinya rusak — tidak
 pernah membuat toko berhenti.
 
 **Kirim gratis** punya dua kriteria: minimal belanja, dan batas rupiah yang
-ditanggung toko. Batas itu bukan hiasan — tanpa batas, kiriman 2 kg ke Papua
+ditanggung toko. Harga tiap opsi kurir di keranjang dihitung dengan
+`ongkirSetelahProgram()` yang sama, bukan dengan cabang tampilan tersendiri —
+pernah terjadi daftar kurir menulis "Gratis" untuk semuanya sementara
+ringkasannya menagih penuh, karena baris tampilannya masih memakai penanda
+boolean lama setelah nilainya berganti jadi objek pengaturan. Batas itu bukan hiasan — tanpa batas, kiriman 2 kg ke Papua
 ditanggung penuh berapa pun ongkirnya. Aturannya dihitung oleh satu fungsi,
 `ongkirSetelahProgram()`, yang dipanggil halaman keranjang MAUPUN penyimpan
 pesanan; angka di layar karenanya tidak mungkin berbeda dari yang ditagihkan.
@@ -232,6 +239,37 @@ lewat `package_items`. Dua aturan yang membedakannya:
 Kategori Paket bisa dimatikan dari `/admin/marketing`. Saat mati, seluruh
 paket hilang dari katalog, beranda, menu, tab bar, dan footer — dan halaman
 produknya membalas 404. Datanya utuh dan bisa dinyalakan lagi kapan saja.
+
+## Akun pelanggan
+
+Terpisah sepenuhnya dari sesi admin: cookie berbeda (`romlah_pelanggan`),
+tabel berbeda (`customer_sessions`), dan tidak ada satu pun jalur yang bisa
+menaikkan sesi pelanggan jadi sesi admin.
+
+**Tidak ada pendaftaran terpisah.** Pelanggan sudah punya barisnya di
+`customers` sejak pesanan pertama; yang dilakukan halaman ini hanya
+menetapkan kata sandi untuk baris yang sudah ada.
+
+**Kepemilikan dibuktikan dengan NOMOR PESANAN**, bukan tautan lewat email.
+Pengiriman email belum tersedia, sedangkan nomor pesanan sudah ada di tangan
+pembeli, acak lima karakter dari 31 huruf (~28 juta kemungkinan per hari),
+dan hanya diketahui pembeli beserta admin. Pemeriksaannya satu kueri yang
+mensyaratkan nomor pesanan DAN nomor telepon sekaligus, jadi nomor pesanan
+orang lain tidak menolong siapa pun — ini diuji tersendiri di
+`scripts/akun-test.mjs`.
+
+Mengganti kata sandi memutus seluruh sesi lama. Percobaan masuk dan
+percobaan menetapkan sandi sama-sama dibatasi 6 kali per 15 menit per nomor.
+
+> Begitu pengiriman email aktif, jalur "lupa sandi" lewat tautan email bisa
+> ditambahkan tanpa mengubah apa pun yang sudah ada. Sampai saat itu,
+> pelanggan yang lupa sandi DAN lupa seluruh nomor pesanannya harus dibantu
+> lewat WhatsApp.
+
+Batas yang perlu diketahui: pelanggan yang barisnya lahir dari prospek
+WhatsApp saja — belum pernah memesan — tidak punya nomor pesanan, sehingga
+belum bisa membuat kata sandi. Halaman akun memang hanya berisi riwayat
+pesanan, jadi belum ada yang bisa dilihatnya.
 
 ## Kode promo
 

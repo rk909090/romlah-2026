@@ -106,14 +106,20 @@ try {
     cek("email tidak valid ditolak", true, e.message.slice(0, 40));
   }
 
-  const tanpaEmail = await simpanPesanan({
-    items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
-    kurirKode: dipilih.code, kurirLayanan: dipilih.service,
-  });
+  // Email kini WAJIB — bukti transaksi dikirim ke sana. Sebelumnya uji ini
+  // memastikan pesanan tanpa email tetap boleh; sekarang justru sebaliknya.
+  try {
+    await simpanPesanan({
+      items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
+      email: "", alamat: "Jl. Uji Integrasi No. 1", tujuan,
+      kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+    });
+    cek("pesanan tanpa email ditolak", false, "justru tersimpan");
+  } catch (e) {
+    cek("pesanan tanpa email ditolak", true, e.message.slice(0, 45));
+  }
   const pel2 = await query(`SELECT email FROM customers WHERE phone = ?`, [BAKU]);
-  cek("pesanan tanpa email tetap boleh", Boolean(tanpaEmail.orderNumber));
-  cek("email lama tidak terhapus oleh pesanan tanpa email", pel2[0]?.email === "penguji@contoh.test", String(pel2[0]?.email));
+  cek("email pelanggan tetap utuh", pel2[0]?.email === "penguji@contoh.test", String(pel2[0]?.email));
 
   /* ── Program gratis ongkir, diuji lewat tarif sungguhan ────────── */
   // Ambang dibuat mustahil tercapai: ongkirnya harus ditagih penuh.
@@ -122,7 +128,7 @@ try {
   });
   const penuh = await simpanPesanan({
     items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    email: "penguji@contoh.test", alamat: "Jl. Uji Integrasi No. 1", tujuan,
     kurirKode: dipilih.code, kurirLayanan: dipilih.service,
   });
   const tarifSatu = await hitungOngkir(tujuan, Number(produk[0].weight_gram));
@@ -134,7 +140,7 @@ try {
   await simpanPengaturan("gratisOngkir", { aktif: true, minBelanja: 0, maksPotongan: 0, pesan: "" });
   const gratis = await simpanPesanan({
     items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    email: "penguji@contoh.test", alamat: "Jl. Uji Integrasi No. 1", tujuan,
     kurirKode: dipilih.code, kurirLayanan: dipilih.service,
   });
   cek("capai ambang: ongkir jadi 0", gratis.shippingCost === 0, String(gratis.shippingCost));
@@ -145,7 +151,7 @@ try {
   await simpanPengaturan("gratisOngkir", { aktif: true, minBelanja: 0, maksPotongan: batas, pesan: "" });
   const sebagian = await simpanPesanan({
     items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    email: "penguji@contoh.test", alamat: "Jl. Uji Integrasi No. 1", tujuan,
     kurirKode: dipilih.code, kurirLayanan: dipilih.service,
   });
   cek("batas potongan: pembeli bayar selisihnya",
@@ -156,7 +162,7 @@ try {
   await simpanPengaturan("gratisOngkir", { aktif: false, minBelanja: 0, maksPotongan: 0, pesan: "" });
   const mati = await simpanPesanan({
     items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    email: "penguji@contoh.test", alamat: "Jl. Uji Integrasi No. 1", tujuan,
     kurirKode: dipilih.code, kurirLayanan: dipilih.service,
   });
   cek("program mati: ongkir penuh lagi", mati.shippingCost === ongkirSatu,
@@ -175,7 +181,7 @@ try {
 
   const denganPromo = await simpanPesanan({
     items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
-    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    email: "penguji@contoh.test", alamat: "Jl. Uji Integrasi No. 1", tujuan,
     kurirKode: dipilih.code, kurirLayanan: dipilih.service,
     kodePromo: "uji-integrasi-promo",
   });

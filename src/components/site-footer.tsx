@@ -21,6 +21,7 @@ export function SiteFooter({ paketAktif }: { paketAktif: boolean }) {
               <li><Link href="/katalog?kategori=paket" className="hover:text-jingga">Paket</Link></li>
             )}
             <li><Link href="/keranjang" className="hover:text-jingga">Keranjang</Link></li>
+            <li><Link href="/akun" className="hover:text-jingga">Akun saya</Link></li>
           </ul>
         </div>
 

@@ -69,6 +69,7 @@ const hasil = await simpanPesanan({
   ],
   nama: "Penguji Otomatis",
   telepon: TELEPON_UJI,
+  email: "penguji@contoh.test",
   alamat: "Jl. Uji Coba No. 1",
   tujuan: TUJUAN,
   kurirKode: "jne",
@@ -119,6 +120,7 @@ const h2 = await simpanPesanan({
   items: [{ slug: p1.slug, qty: 1 }],
   nama: "Penguji Otomatis",
   telepon: "+62" + TELEPON_UJI.slice(1), // format berbeda, orang yang sama
+  email: "penguji@contoh.test",
   alamat: "Jl. Uji Coba No. 1",
   tujuan: TUJUAN,
   kurirKode: "jne",
@@ -147,6 +149,7 @@ const dasar = {
   items: [{ slug: p1.slug, qty: 1 }],
   nama: "Penguji Otomatis",
   telepon: TELEPON_UJI,
+  email: "penguji@contoh.test",
   alamat: "Jl. Uji Coba No. 1",
   tujuan: TUJUAN,
   kurirKode: "jne",
@@ -162,6 +165,9 @@ await harusGagal("produk tidak dikenal ditolak", { ...dasar, items: [{ slug: "pr
 await harusGagal("jumlah nol ditolak", { ...dasar, items: [{ slug: p1.slug, qty: 0 }] });
 await harusGagal("jumlah negatif ditolak", { ...dasar, items: [{ slug: p1.slug, qty: -5 }] });
 await harusGagal("kirim tanpa tujuan ditolak", { ...dasar, tujuan: null });
+// Email jadi WAJIB sejak bukti transaksi dikirim lewat surel.
+await harusGagal("email kosong ditolak", { ...dasar, email: "" });
+await harusGagal("email tanpa @ ditolak", { ...dasar, email: "bukan-email" });
 
 /* ── 6. Ambil di toko tidak butuh tujuan dan gratis ───────────────── */
 const h3 = await simpanPesanan({ ...dasar, tujuan: null, kurirKode: "pickup", kurirLayanan: "Tanjung Barat" });
