@@ -21,6 +21,13 @@ import {
   updateProduct,
   type InputProduk,
 } from "@/lib/admin/products";
+import {
+  hapusPaket,
+  setKategoriAktif,
+  simpanPaket,
+  type InputPaket,
+} from "@/lib/admin/packages";
+import { STATUS_LEAD, ubahStatusLead, type StatusLead } from "@/lib/leads";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -258,4 +265,131 @@ export async function ubahPesanan(_prev: FormState, formData: FormData): Promise
   revalidatePath(`/admin/pesanan/${id}`);
   revalidatePath("/admin/pelanggan");
   return { ok: "Pesanan diperbarui." };
+}
+
+/* ── Prospek WhatsApp ──────────────────────────────────────────────── */
+export async function ubahLead(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return { error: "Prospek tidak dikenali." };
+
+  const status = String(formData.get("status") ?? "");
+  // Divalidasi terhadap daftar yang sah, bukan diteruskan apa adanya:
+  // kolomnya ENUM, dan nilai asing ditolak basis data dengan galat mentah.
+  if (!STATUS_LEAD.includes(status as StatusLead)) return { error: "Status itu tidak dikenal." };
+
+  const catatan = String(formData.get("note") ?? "").trim().slice(0, 500);
+  const n = await ubahStatusLead(id, status as StatusLead, catatan || null);
+  if (n !== 1) return { error: "Prospek tidak ditemukan." };
+
+  revalidatePath("/admin/inquiry");
+  revalidatePath("/admin/pelanggan");
+  return { ok: "Prospek diperbarui." };
+}
+
+/* ── Marketing: nyala/mati kategori ────────────────────────────────── */
+export async function ubahKategoriAktif(formData: FormData): Promise<void> {
+  if (!(await getCurrentUser())) redirect("/admin/login");
+
+  const slug = String(formData.get("slug") ?? "").trim();
+  if (!slug) return;
+  const aktif = formData.get("aktif") === "1";
+
+  await setKategoriAktif(slug, aktif);
+
+  // Seluruh halaman toko ikut disegarkan: kategori yang dimatikan harus
+  // hilang dari menu, tab bar, dan katalog sekaligus, bukan cuma dari satu
+  // halaman yang kebetulan dibuka.
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/marketing");
+}
+
+/* ── Marketing: paket ──────────────────────────────────────────────── */
+function bacaInputPaket(formData: FormData): InputPaket | string {
+  const name = String(formData.get("name") ?? "").trim();
+  const slug = String(formData.get("slug") ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  const price = Number(formData.get("price"));
+  const weightGram = Number(formData.get("weightGram") ?? 0);
+
+  if (!name) return "Nama paket wajib diisi.";
+  if (!slug) return "Slug wajib diisi dan harus memuat huruf atau angka.";
+  if (!Number.isFinite(price) || price < 0) return "Harga harus berupa angka tidak negatif.";
+
+  // Isi dikirim sebagai dua larik sejajar; indeksnya yang memasangkan
+  // produk dengan jumlahnya.
+  const produk = formData.getAll("isiProduk").map((v) => Number(v));
+  const jumlah = formData.getAll("isiQty").map((v) => Number(v));
+  if (produk.length !== jumlah.length) return "Isi paket tidak terbaca dengan benar.";
+
+  const isi: { productId: number; qty: number }[] = [];
+  const sudah = new Set<number>();
+  for (const [n, pid] of produk.entries()) {
+    const qty = jumlah[n];
+    if (!Number.isInteger(pid) || pid <= 0) continue;
+    if (!Number.isFinite(qty) || qty <= 0) return "Jumlah setiap isi paket harus lebih dari 0.";
+    if (sudah.has(pid)) return "Ada produk yang didaftarkan dua kali dalam satu paket.";
+    sudah.add(pid);
+    isi.push({ productId: pid, qty: Math.round(qty) });
+  }
+
+  if (isi.length === 0 && (!Number.isFinite(weightGram) || weightGram <= 0)) {
+    return "Paket tanpa isi harus diisi beratnya — nilainya dipakai menghitung ongkir.";
+  }
+
+  return {
+    name,
+    slug,
+    price: Math.round(price),
+    weightGram: Math.round(weightGram) || 0,
+    description: String(formData.get("description") ?? "").trim(),
+    inStock: formData.get("inStock") === "on",
+    isActive: formData.get("isActive") === "on",
+    isi,
+  };
+}
+
+export async function simpanPaketAksi(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const input = bacaInputPaket(formData);
+  if (typeof input === "string") return { error: input };
+
+  const idMentah = formData.get("id");
+  const id = idMentah ? Number(idMentah) : null;
+
+  try {
+    await simpanPaket(id, input);
+  } catch (e) {
+    if (e && typeof e === "object" && "code" in e && e.code === DUPLIKAT) {
+      return { error: `Slug "${input.slug}" sudah dipakai produk lain.` };
+    }
+    if (e instanceof Error && !/^(ER_|ECONN|ETIMEDOUT)/.test(e.message)) {
+      return { error: e.message };
+    }
+    throw e;
+  }
+
+  revalidatePath("/admin/marketing");
+  revalidatePath("/katalog");
+  revalidatePath(`/produk/${input.slug}`);
+  revalidatePath("/");
+  redirect("/admin/marketing");
+}
+
+export async function hapusPaketAksi(formData: FormData): Promise<void> {
+  if (!(await getCurrentUser())) redirect("/admin/login");
+
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+
+  await hapusPaket(id);
+
+  revalidatePath("/admin/marketing");
+  revalidatePath("/katalog");
+  revalidatePath("/");
 }

@@ -3,8 +3,10 @@ import { AdminHeading } from "@/components/admin/admin-shell";
 import { countCustomers } from "@/lib/admin/customers";
 import { getDashboardStats, listCategories, listProducts } from "@/lib/admin/products";
 import { rupiah } from "@/lib/format";
+import { hitungLead } from "@/lib/leads";
 
 export const metadata = { title: "Dasbor" };
+export const dynamic = "force-dynamic";
 
 function Kartu({
   label,
@@ -42,11 +44,12 @@ function Kartu({
 }
 
 export default async function Dasbor() {
-  const [stat, kategori, produk, jumlahPelanggan] = await Promise.all([
+  const [stat, kategori, produk, jumlahPelanggan, lead] = await Promise.all([
     getDashboardStats(),
     listCategories(),
     listProducts({ status: "aktif" }),
     countCustomers(),
+    hitungLead(),
   ]);
 
   const nilaiKatalog = produk.reduce((n, p) => n + p.price, 0);
@@ -56,7 +59,7 @@ export default async function Dasbor() {
     <>
       <AdminHeading title="Dasbor" description="Ringkasan isi toko." />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <Kartu label="Produk aktif" nilai={stat.produkAktif} href="/admin/produk" />
         <Kartu
           label="Stok habis"
@@ -82,6 +85,19 @@ export default async function Dasbor() {
           nilai={jumlahPelanggan}
           catatan={jumlahPelanggan === 0 ? "Terisi saat pesanan pertama" : undefined}
           href="/admin/pelanggan"
+        />
+        <Kartu
+          label="Inquiry WA"
+          nilai={lead.total}
+          catatan={
+            lead.baru > 0
+              ? `${lead.baru} belum ditindaklanjuti`
+              : lead.total === 0
+                ? "Terisi saat ada yang bertanya"
+                : "Semua sudah ditindaklanjuti"
+          }
+          href="/admin/inquiry"
+          tegas={lead.baru > 0}
         />
       </div>
 
@@ -130,7 +146,14 @@ export default async function Dasbor() {
                   href={`/admin/produk?kategori=${k.slug}`}
                   className="flex items-center justify-between px-5 py-3.5 text-sm transition hover:bg-sunken"
                 >
-                  <span className="font-medium">{k.name}</span>
+                  <span className="font-medium">
+                    {k.name}
+                    {!k.isActive && (
+                      <span className="ml-2 rounded-full bg-line px-2 py-0.5 text-[10px] font-semibold text-muted">
+                        Tidak tayang
+                      </span>
+                    )}
+                  </span>
                   <span className="tabular text-muted">{k.productCount}</span>
                 </Link>
               </li>

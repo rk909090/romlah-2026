@@ -209,3 +209,66 @@ ALTER TABLE customer_addresses MODIFY COLUMN destination_id VARCHAR(64) NULL;
 -- mengikuti prinsip yang sama: nota lama tidak ikut berubah bila pelanggan
 -- kelak memperbarui datanya.
 ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_email VARCHAR(190) NULL AFTER customer_phone;
+
+-- ── Kategori bisa dinyalakan/dimatikan ────────────────────────────────
+-- Dipakai untuk kategori Paket: bundling hanya dijual saat ada program
+-- pemasaran, jadi seluruh kategorinya perlu bisa disembunyikan dari toko
+-- tanpa harus mengarsipkan produknya satu per satu.
+ALTER TABLE categories ADD COLUMN IF NOT EXISTS is_active TINYINT(1) NOT NULL DEFAULT 1;
+
+-- ── Isi paket ─────────────────────────────────────────────────────────
+-- Sebuah paket adalah produk biasa di kategori "paket" yang isinya
+-- ditunjuk ke produk lain. Beratnya dihitung dari isi ini, bukan diketik
+-- ulang, supaya ongkir tidak pernah meleset dari isi paket sebenarnya.
+--
+-- Harga TIDAK dihitung dari isi: potongan harga justru inti dari paket.
+CREATE TABLE IF NOT EXISTS package_items (
+  id          INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  package_id  INT UNSIGNED  NOT NULL,   -- products.id milik paketnya
+  product_id  INT UNSIGNED  NOT NULL,   -- products.id milik isinya
+  qty         INT UNSIGNED  NOT NULL DEFAULT 1,
+  sort_order  INT           NOT NULL DEFAULT 0,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_package_items (package_id, product_id),
+  KEY idx_package_items_package (package_id, sort_order),
+  CONSTRAINT fk_package_items_package FOREIGN KEY (package_id)
+    REFERENCES products (id) ON DELETE CASCADE,
+  -- Isi paket tidak boleh dihapus diam-diam: RESTRICT memaksa produk
+  -- dikeluarkan dari paket lebih dulu sebelum produknya bisa dihapus.
+  CONSTRAINT fk_package_items_product FOREIGN KEY (product_id)
+    REFERENCES products (id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Prospek dari WhatsApp ─────────────────────────────────────────────
+-- Setiap tombol WhatsApp di toko (kecuali "Pesan lewat WhatsApp" di
+-- keranjang, yang sudah membuat pesanan sungguhan) meminta data pengunjung
+-- lebih dulu. Tanpa ini, percakapan WhatsApp tidak meninggalkan jejak apa
+-- pun yang bisa ditindaklanjuti.
+--
+-- Nomor disimpan ternormalkan (62…) mengikuti tabel customers, supaya
+-- prospek dan pembeli lama bisa disatukan lewat customer_id.
+CREATE TABLE IF NOT EXISTS wa_leads (
+  id           INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  customer_id  INT UNSIGNED  NULL,
+  name         VARCHAR(190)  NOT NULL,
+  phone        VARCHAR(24)   NOT NULL,
+  email        VARCHAR(190)  NULL,
+  message      TEXT          NULL,
+  -- Dari mana tombolnya ditekan: beranda, produk, toko, pesanan, footer.
+  source       VARCHAR(40)   NOT NULL DEFAULT 'lain',
+  product_slug VARCHAR(190)  NULL,
+  page_path    VARCHAR(255)  NULL,
+  status       ENUM('baru','dihubungi','prospek','jadi_pesanan','batal')
+               NOT NULL DEFAULT 'baru',
+  admin_note   VARCHAR(500)  NULL,
+  created_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at   DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                             ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_wa_leads_status (status, created_at),
+  KEY idx_wa_leads_phone (phone),
+  KEY idx_wa_leads_customer (customer_id),
+  KEY idx_wa_leads_dibuat (created_at),
+  CONSTRAINT fk_wa_leads_customer FOREIGN KEY (customer_id)
+    REFERENCES customers (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

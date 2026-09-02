@@ -56,7 +56,11 @@ export default async function Beranda() {
               >
                 Belanja sekarang
               </Link>
-              <WaButton pesan="Halo Romlah, saya mau tanya-tanya soal oleh-oleh." lebar="inline">
+              <WaButton
+                pesan="Halo Romlah, saya mau tanya-tanya soal oleh-oleh."
+                sumber="beranda"
+                lebar="inline"
+              >
                 Chat kami
               </WaButton>
             </div>

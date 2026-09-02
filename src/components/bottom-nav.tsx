@@ -11,9 +11,13 @@ const TABS = [
   { href: "/keranjang", label: "Keranjang", d: "M6 7h12l-1 12H7L6 7Zm3.5 0a2.5 2.5 0 0 1 5 0" },
 ];
 
-export function BottomNav() {
+export function BottomNav({ paketAktif }: { paketAktif: boolean }) {
   const pathname = usePathname();
   const { jumlahItem, ready } = useCart();
+
+  // Tab Paket hilang selama kategorinya dimatikan; tanpa ini tab-nya tetap
+  // ada tapi membuka katalog kosong.
+  const tabs = paketAktif ? TABS : TABS.filter((t) => t.label !== "Paket");
 
   return (
     <nav
@@ -21,7 +25,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-bg/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
     >
       <ul className="mx-auto flex max-w-lg">
-        {TABS.map((t) => {
+        {tabs.map((t) => {
           const base = t.href.split("?")[0];
           const aktif = base === "/" ? pathname === "/" : pathname.startsWith(base);
           return (

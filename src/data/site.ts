@@ -40,6 +40,54 @@ export const SITE = {
 } as const;
 
 /**
+ * Kode pelacakan, disalin dari romlah.com yang sedang berjalan.
+ *
+ * Diperiksa langsung di peramban terhadap situs live, bukan dikira-kira dari
+ * kode sumbernya saja — WordPress memasang sebagian tag lewat JavaScript,
+ * jadi HTML mentah tidak memperlihatkan semuanya. Yang benar-benar terpanggil:
+ *
+ *   1. Google tag GT-NNMKF9C  (gtag.js, dipasang Google Site Kit)
+ *        └─ meneruskan ke GA4 G-Z1NM0E5YWZ
+ *   2. Google Tag Manager GTM-NDPM87HT
+ *        ├─ GA4 G-H5827SJTLT
+ *        ├─ Google Ads AW-958729191
+ *        └─ Meta Pixel 4070720943181637
+ *   3. Meta Pixel 391047905266240  (dipasang plugin PixelYourSite)
+ *
+ * Yang dipasang di sini hanya nomor 1, 2, dan 3. Isi wadah GTM (GA4
+ * G-H5827SJTLT, Google Ads, dan pixel kedua) ikut terbawa sendirinya —
+ * memasangnya lagi secara terpisah akan membuat setiap kunjungan terhitung
+ * dua kali.
+ *
+ * Semua ID di bawah ini memang publik: siapa pun bisa membacanya dari kode
+ * sumber romlah.com. Bukan rahasia, jadi tidak perlu disimpan di .env —
+ * tapi tetap bisa ditimpa lewat variabel lingkungan untuk staging.
+ */
+export const ANALYTICS = {
+  gtm: process.env.NEXT_PUBLIC_GTM_ID ?? "GTM-NDPM87HT",
+  googleTag: process.env.NEXT_PUBLIC_GOOGLE_TAG_ID ?? "GT-NNMKF9C",
+  metaPixel: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "391047905266240",
+} as const;
+
+/**
+ * Pelacakan dimatikan kecuali di produksi.
+ *
+ * Tanpa ini, setiap `pnpm dev` dan setiap uji di peramban ikut masuk ke
+ * laporan GA dan mengotori datanya.
+ *
+ *   NEXT_PUBLIC_ANALYTICS=off  mematikannya juga di produksi, misalnya saat
+ *                              situs masih dalam masa uji coba.
+ *   NEXT_PUBLIC_ANALYTICS=on   menyalakannya di luar produksi. Hanya untuk
+ *                              memeriksa pemasangannya, dan WAJIB dipasangkan
+ *                              dengan ID palsu lewat NEXT_PUBLIC_GTM_ID dan
+ *                              kawan-kawan — kalau tidak, data uji ikut masuk
+ *                              ke laporan yang sungguhan.
+ */
+export const analitikAktif =
+  process.env.NEXT_PUBLIC_ANALYTICS === "on" ||
+  (process.env.NODE_ENV === "production" && process.env.NEXT_PUBLIC_ANALYTICS !== "off");
+
+/**
  * Testimoni pelanggan.
  *
  * SENGAJA KOSONG. Romlah hanya punya ulasan di Google Maps, dan ulasan itu

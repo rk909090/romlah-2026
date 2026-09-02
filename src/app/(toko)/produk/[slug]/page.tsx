@@ -6,7 +6,7 @@ import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { WaButton } from "@/components/wa-button";
 import { SITE } from "@/data/site";
-import { getProduct, getRelated } from "@/lib/catalog";
+import { getIsiPaketToko, getProduct, getRelated } from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
 
 type Props = { params: Promise<{ slug: string }> };
@@ -45,7 +45,7 @@ export default async function HalamanProduk({ params }: Props) {
   const p = await getProduct(slug);
   if (!p) notFound();
 
-  const terkait = await getRelated(slug, 4);
+  const [terkait, isiPaket] = await Promise.all([getRelated(slug, 4), getIsiPaketToko(slug)]);
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -92,6 +92,25 @@ export default async function HalamanProduk({ params }: Props) {
             <BuyBar slug={p.slug} inStock={p.inStock} />
           </div>
 
+          {/* Isi paket dari data sungguhan, bukan dari teks deskripsi.
+              Beratnya juga dihitung dari daftar ini, jadi keduanya tidak
+              mungkin berbeda. */}
+          {isiPaket.length > 0 && (
+            <div className="mt-8 rounded-2xl border border-line bg-sunken p-5">
+              <h2 className="font-display text-sm font-bold">Isi paket</h2>
+              <ul className="mt-3 divide-y divide-line text-sm">
+                {isiPaket.map((i) => (
+                  <li key={i.slug} className="flex items-center justify-between gap-4 py-2">
+                    <Link href={`/produk/${i.slug}`} className="min-w-0 truncate hover:text-jingga">
+                      {i.name}
+                    </Link>
+                    <span className="tabular shrink-0 font-semibold">{i.qty}×</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           {p.description.length > 0 && (
             <div className="mt-8 space-y-2 border-t border-line pt-6 text-[15px] leading-relaxed text-ink-2">
               {p.description.map((baris, i) => (
@@ -111,6 +130,8 @@ export default async function HalamanProduk({ params }: Props) {
 
           <WaButton
             pesan={`Halo Romlah, saya mau tanya soal ${p.name} (${SITE.url}/produk/${p.slug})`}
+            sumber="produk"
+            produkSlug={p.slug}
             className="mt-6"
           >
             Tanya lewat WhatsApp

@@ -2,6 +2,17 @@ import type { Metadata } from "next";
 import { WaButton } from "@/components/wa-button";
 import { SITE } from "@/data/site";
 
+/**
+ * Satu-satunya halaman toko yang dulu sepenuhnya statis.
+ *
+ * Sekarang dipaksa dinamis: layout (toko) membaca kategori mana yang sedang
+ * tayang untuk menyusun menu, dan tanpa penanda ini Next akan menjalankan
+ * kueri itu saat build. Seluruh halaman lain sudah force-dynamic dengan
+ * alasan yang sama — build di Hostinger tidak boleh bergantung pada basis
+ * data yang bisa saja tidak terjangkau dari mesin build.
+ */
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Toko & jam buka",
   description: `Alamat dan jam buka outlet ${SITE.name} di Jakarta, plus toko resmi kami di Tokopedia. Pesanan juga bisa diambil sendiri tanpa ongkir.`,
@@ -82,7 +93,13 @@ export default function Toko() {
         >
           Buka di Google Maps ↗
         </a>
-        <WaButton lebar="inline">WhatsApp {SITE.whatsapp.display}</WaButton>
+        <WaButton
+          pesan="Halo Romlah, saya mau tanya soal toko dan jam bukanya."
+          sumber="toko"
+          lebar="inline"
+        >
+          WhatsApp {SITE.whatsapp.display}
+        </WaButton>
       </div>
     </div>
   );

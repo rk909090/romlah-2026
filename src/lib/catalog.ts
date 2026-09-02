@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { query, queryOne } from "./db";
 import type { Category, CategorySlug, Product } from "./types";
 
@@ -27,12 +28,24 @@ type BarisFoto = {
   alt: string;
 };
 
+/**
+ * Produk yang boleh tampil di toko.
+ *
+ * Dua saringan, bukan satu: produknya sendiri harus aktif, DAN kategorinya
+ * harus aktif. Yang kedua dipakai untuk Paket — bundling hanya dijual saat
+ * ada program pemasaran, dan mematikan kategorinya harus benar-benar
+ * menyembunyikan seluruh isinya, bukan sekadar menghilangkan tautannya.
+ *
+ * Produk tanpa kategori tetap tampil: tidak punya kategori bukan berarti
+ * kategorinya mati.
+ */
 const PILIH = `
   SELECT p.id, p.legacy_id, p.slug, p.name, p.price, p.weight_gram,
          c.slug AS category, p.description, p.in_stock
     FROM products p
     LEFT JOIN categories c ON c.id = p.category_id
-   WHERE p.is_active = 1`;
+   WHERE p.is_active = 1
+     AND (p.category_id IS NULL OR c.is_active = 1)`;
 
 /**
  * Pasangkan produk dengan fotonya lewat satu kueri tambahan, bukan satu
@@ -71,11 +84,25 @@ async function lengkapi(baris: BarisProduk[]): Promise<Product[]> {
   }));
 }
 
-export async function getCategories(): Promise<Category[]> {
+/**
+ * Kategori yang sedang dinyalakan.
+ *
+ * Dibungkus `cache()` dari React karena dipanggil dua kali dalam satu
+ * permintaan: sekali oleh layout toko (untuk menyusun menu) dan sekali lagi
+ * oleh halamannya. Tanpa ini, setiap kunjungan memakai dua koneksi basis
+ * data untuk jawaban yang sama persis, padahal kuota Hostinger cuma 100
+ * koneksi bersamaan.
+ */
+export const getCategories = cache(async function getCategories(): Promise<Category[]> {
   const baris = await query<{ slug: CategorySlug; name: string; blurb: string }>(
-    `SELECT slug, name, blurb FROM categories ORDER BY sort_order, name`,
+    `SELECT slug, name, blurb FROM categories WHERE is_active = 1 ORDER BY sort_order, name`,
   );
   return baris.map((b) => ({ slug: b.slug, name: b.name, blurb: b.blurb }));
+});
+
+/** Apakah satu kategori sedang dinyalakan. Dipakai menu dan tab bar. */
+export async function kategoriAktif(slug: CategorySlug): Promise<boolean> {
+  return (await getCategories()).some((c) => c.slug === slug);
 }
 
 export async function getProducts(): Promise<Product[]> {
@@ -151,4 +178,26 @@ export function countByCategory(list: Product[]): Record<CategorySlug, number> {
     minuman: list.filter((p) => p.category === "minuman").length,
     paket: list.filter((p) => p.category === "paket").length,
   };
+}
+
+/**
+ * Isi sebuah paket.
+ *
+ * Kosong untuk produk biasa, dan juga kosong untuk paket yang isinya belum
+ * didaftarkan di panel admin. Halaman produk memakainya untuk menampilkan
+ * daftar "Isi paket" dari data sungguhan, bukan dari teks deskripsi yang
+ * tidak bisa diperiksa ulang.
+ */
+export async function getIsiPaketToko(
+  slug: string,
+): Promise<{ slug: string; name: string; qty: number; weightGram: number }[]> {
+  return query(
+    `SELECT isi.slug, isi.name, pi.qty, isi.weight_gram AS weightGram
+       FROM package_items pi
+       JOIN products paket ON paket.id = pi.package_id
+       JOIN products isi   ON isi.id  = pi.product_id
+      WHERE paket.slug = ?
+      ORDER BY pi.sort_order, isi.name`,
+    [slug],
+  );
 }

@@ -4,6 +4,7 @@ import { listCustomers, tampilkanTelepon } from "@/lib/admin/customers";
 import { rupiah } from "@/lib/format";
 
 export const metadata = { title: "Pelanggan" };
+export const dynamic = "force-dynamic";
 
 export default async function Pelanggan({
   searchParams,
@@ -65,17 +66,30 @@ export default async function Pelanggan({
                   <th className="px-4 py-3 text-right text-xs font-semibold tracking-wider text-muted uppercase">Pesanan</th>
                   <th className="px-4 py-3 text-right text-xs font-semibold tracking-wider text-muted uppercase">Total belanja</th>
                   <th className="px-4 py-3 text-xs font-semibold tracking-wider text-muted uppercase">Terakhir pesan</th>
+                  <th className="px-4 py-3"><span className="sr-only">Aksi</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {pelanggan.map((c) => (
-                  <tr key={c.id}>
-                    <td className="px-4 py-3 font-semibold">{c.name}</td>
+                  <tr key={c.id} className="transition hover:bg-sunken">
+                    <td className="px-4 py-3 font-semibold">
+                      <Link href={`/admin/pelanggan/${c.id}`} className="hover:text-jingga">
+                        {c.name}
+                      </Link>
+                    </td>
                     <td className="tabular px-4 py-3 text-ink-2">{tampilkanTelepon(c.phone)}</td>
                     <td className="tabular px-4 py-3 text-right">{c.orderCount}</td>
                     <td className="tabular px-4 py-3 text-right font-semibold">{rupiah(c.totalSpent)}</td>
                     <td className="px-4 py-3 text-ink-2">
                       {c.lastOrderAt ? new Date(c.lastOrderAt).toLocaleDateString("id-ID") : "—"}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/admin/pelanggan/${c.id}`}
+                        className="text-xs font-medium text-jingga hover:underline"
+                      >
+                        Detail →
+                      </Link>
                     </td>
                   </tr>
                 ))}

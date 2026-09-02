@@ -2,7 +2,7 @@ import Link from "next/link";
 import { SITE } from "@/data/site";
 import { WaButton } from "./wa-button";
 
-export function SiteFooter() {
+export function SiteFooter({ paketAktif }: { paketAktif: boolean }) {
   return (
     <footer className="mt-20 border-t border-line bg-sunken">
       <div className="tumpal" aria-hidden />
@@ -17,7 +17,9 @@ export function SiteFooter() {
           <ul className="mt-3 space-y-2 text-sm text-ink-2">
             <li><Link href="/katalog?kategori=makanan" className="hover:text-jingga">Makanan</Link></li>
             <li><Link href="/katalog?kategori=minuman" className="hover:text-jingga">Minuman</Link></li>
-            <li><Link href="/katalog?kategori=paket" className="hover:text-jingga">Paket</Link></li>
+            {paketAktif && (
+              <li><Link href="/katalog?kategori=paket" className="hover:text-jingga">Paket</Link></li>
+            )}
             <li><Link href="/keranjang" className="hover:text-jingga">Keranjang</Link></li>
           </ul>
         </div>
@@ -54,7 +56,7 @@ export function SiteFooter() {
           <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Hubungi</h3>
           <ul className="mt-3 space-y-2 text-sm text-ink-2">
             <li>
-              <WaButton lebar="inline" ukuran="kecil">
+              <WaButton sumber="footer" lebar="inline" ukuran="kecil">
                 {SITE.whatsapp.display}
               </WaButton>
             </li>

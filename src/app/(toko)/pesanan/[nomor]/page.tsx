@@ -104,6 +104,7 @@ export default async function StatusPesanan({ params }: { params: Promise<{ nomo
 
       <WaButton
         pesan={`Halo Romlah, saya mau tanya soal pesanan ${pesanan.order_number}`}
+        sumber="pesanan"
         className="mt-5"
       >
         Tanya lewat WhatsApp

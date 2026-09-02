@@ -21,6 +21,7 @@ pnpm build      # produksi
 | `/keranjang` | Keranjang, alamat lengkap, email opsional, ongkir, dua jalur checkout |
 | `/toko` | Alamat & jam buka outlet Tanjung Barat, plus toko Tokopedia |
 | `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
+| `/api/produk` | Ringkasan produk untuk keranjang mini |
 | `/admin/*` | Panel admin — lihat bagian tersendiri di bawah |
 
 Halaman toko **dirender saat permintaan**, bukan dibangun statis. Katalog kini
@@ -31,9 +32,10 @@ dikembalikan ke SSG untuk mempercepatnya.
 
 ## Basis data
 
-MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — sembilan tabel:
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — sebelas tabel:
 `admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
-`customers`, `customer_addresses`, `orders`, `order_items`.
+`customers`, `customer_addresses`, `orders`, `order_items`, `package_items`,
+`wa_leads`.
 
 **Pelanggan dikunci nomor telepon, bukan email.** Pembeli lewat WhatsApp datang
 membawa nomor; tanpa itu pesanan dari WhatsApp dan dari website tidak akan
@@ -62,6 +64,7 @@ node --import ./scripts/ts-resolver.mjs scripts/integration-test.mjs # pesanan +
 node scripts/biteship-origin.mjs 12530                            # cari ID area outlet asal
 node scripts/sync-deskripsi.mjs          # bandingkan deskripsi products.json vs DB
 node scripts/sync-deskripsi.mjs --tulis  # dorong deskripsi ke DB (hanya kolom description)
+node --import ./scripts/ts-resolver.mjs scripts/paket-lead-test.mjs # uji paket & prospek WA
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan
@@ -122,6 +125,10 @@ Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
 | `/admin/produk/baru`, `/admin/produk/[id]` | Buat dan ubah produk |
 | `/admin/pesanan`, `/admin/pesanan/[id]` | Daftar & detail pesanan, ubah status dan nomor resi |
 | `/admin/pelanggan` | Daftar pelanggan, dikunci nomor WhatsApp |
+| `/admin/pelanggan/[id]` | Profil lengkap: alamat tersimpan, riwayat pesanan, inquiry WA |
+| `/admin/inquiry` | Prospek dari tombol WhatsApp di toko; ubah status & catatan |
+| `/admin/marketing` | Nyalakan/matikan kategori Paket, dan kelola paket |
+| `/admin/marketing/paket/baru`, `/admin/marketing/paket/[id]` | Buat, ubah, hapus paket |
 | `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
 
 Beberapa keputusan keamanan:
@@ -136,7 +143,69 @@ Beberapa keputusan keamanan:
 - Pesan galat saat masuk sama untuk email tak dikenal maupun sandi salah, dan
   ada pembatas 5 percobaan gagal per email selama 10 menit.
 - Produk **diarsipkan, tidak dihapus** — baris pesanan menunjuk ke produk lewat
-  foreign key.
+  foreign key. Paket adalah pengecualian sebagian: yang **belum pernah masuk
+  pesanan** benar-benar dihapus, sisanya diarsipkan. Tombolnya berubah label
+  sendiri sesuai keadaan itu.
+- Tag pelacakan **tidak dipasang di halaman admin.** Judul halaman admin memuat
+  nama pelanggan dan nomor pesanan; itu tidak pantas dikirim ke Google atau
+  Meta. Analytics hidup di layout `(toko)` saja.
+
+## Prospek WhatsApp
+
+Setiap tombol WhatsApp di toko — beranda, halaman produk, `/toko`, footer, dan
+halaman status pesanan — membuka formulir singkat lebih dulu (nama, nomor,
+email opsional, pertanyaan), menyimpannya ke `wa_leads`, baru menawarkan
+tautan ke WhatsApp. Sebelum ini seluruh pertanyaan yang masuk lewat WhatsApp
+tidak meninggalkan jejak apa pun, padahal itu kanal terbesar Romlah.
+
+Tombol **Pesan lewat WhatsApp** di keranjang sengaja TIDAK lewat jalur ini:
+yang itu sudah membuat pesanan sungguhan beserta barang dan ongkirnya.
+
+Nomornya dinormalkan dan pelanggannya di-upsert, jadi prospek dan pembeli lama
+menyatu di satu baris `customers` dan terlihat bersama di
+`/admin/pelanggan/[id]`.
+
+Tautan WhatsApp dibuka lewat `<a>` yang benar-benar diklik pengunjung, bukan
+`window.open` sesudah `await` — peramban memblokir jendela yang dibuka setelah
+penantian asinkron.
+
+## Paket
+
+Paket adalah produk di kategori `paket` yang isinya menunjuk ke produk lain
+lewat `package_items`. Dua aturan yang membedakannya:
+
+- **Beratnya dihitung dari isi**, tidak diketik. Dihitung ulang di server saat
+  menyimpan, jadi angka di formulir tidak bisa menyimpang. Berat yang salah
+  langsung jadi ongkir yang salah.
+- **Harganya tidak dihitung dari isi.** Potongan harga justru inti dari menjual
+  paket. Formulirnya menampilkan nilai isi bila dibeli satuan supaya besaran
+  potongannya kelihatan sebelum disimpan.
+
+Kategori Paket bisa dimatikan dari `/admin/marketing`. Saat mati, seluruh
+paket hilang dari katalog, beranda, menu, tab bar, dan footer — dan halaman
+produknya membalas 404. Datanya utuh dan bisa dinyalakan lagi kapan saja.
+
+## Pelacakan
+
+Tiga tag, disalin dari romlah.com yang sedang berjalan. Diperiksa langsung di
+peramban terhadap situs live, bukan dikira-kira dari kode sumbernya: WordPress
+memasang sebagian tag lewat JavaScript, jadi HTML mentah tidak memperlihatkan
+semuanya.
+
+| Yang dipasang | Isi |
+| --- | --- |
+| Google tag `GT-NNMKF9C` | meneruskan ke GA4 `G-Z1NM0E5YWZ` |
+| Google Tag Manager `GTM-NDPM87HT` | di dalamnya: GA4 `G-H5827SJTLT`, Google Ads `AW-958729191`, Meta Pixel `4070720943181637` |
+| Meta Pixel `391047905266240` | dipasang langsung |
+
+Isi wadah GTM ikut terbawa sendirinya. **Jangan memasang GA4 `G-H5827SJTLT`,
+Google Ads, atau pixel `4070720943181637` secara terpisah** — setiap kunjungan
+akan terhitung dua kali.
+
+Perpindahan halaman di dalam aplikasi ditangani `components/analytics-route.tsx`
+untuk gtag dan Meta Pixel. Wadah GTM sengaja tidak disentuh: pemicu di dalamnya
+diatur dari panel GTM, dan menambah kiriman sendiri dari sini bisa membuat
+angkanya dobel.
 
 ## Data
 

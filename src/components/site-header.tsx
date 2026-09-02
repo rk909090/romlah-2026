@@ -7,13 +7,14 @@ import { useState } from "react";
 import { SITE } from "@/data/site";
 import { useCart } from "./cart-provider";
 
-const NAV = [
-  { href: "/katalog", label: "Katalog" },
-  { href: "/katalog?kategori=paket", label: "Paket" },
-  { href: "/toko", label: "Toko" },
-];
-
-export function SiteHeader() {
+export function SiteHeader({ paketAktif }: { paketAktif: boolean }) {
+  // Tautan Paket ikut hilang selama kategorinya dimatikan dari panel
+  // Marketing — tautan ke kategori mati cuma jalan buntu.
+  const nav = [
+    { href: "/katalog", label: "Katalog" },
+    ...(paketAktif ? [{ href: "/katalog?kategori=paket", label: "Paket" }] : []),
+    { href: "/toko", label: "Toko" },
+  ];
   const { jumlahItem, ready } = useCart();
   const router = useRouter();
   // Sengaja tidak membaca useSearchParams di sini: header ada di layout, dan
@@ -36,7 +37,7 @@ export function SiteHeader() {
         </Link>
 
         <nav className="hidden items-center gap-5 text-sm font-medium text-ink-2 md:flex">
-          {NAV.map((n) => (
+          {nav.map((n) => (
             <Link key={n.label} href={n.href} className="transition hover:text-jingga">
               {n.label}
             </Link>

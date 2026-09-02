@@ -24,6 +24,8 @@ export type AdminCategory = {
   slug: CategorySlug;
   name: string;
   productCount: number;
+  /** Kategori yang dimatikan tidak tampil di toko sama sekali. */
+  isActive: boolean;
 };
 
 type Baris = Omit<AdminProduct, "inStock" | "isActive"> & {
@@ -92,13 +94,32 @@ export async function getProductImages(
   );
 }
 
+/**
+ * Seluruh kategori, TERMASUK yang sedang dimatikan.
+ *
+ * Berbeda dari getCategories() di lib/catalog, yang hanya mengembalikan
+ * kategori tayang. Panel admin justru harus tetap melihat kategori yang
+ * dimatikan — kalau tidak, produk di dalamnya jadi tidak bisa disunting.
+ */
 export async function listCategories(): Promise<AdminCategory[]> {
-  const baris = await query<{ id: number; slug: CategorySlug; name: string; productCount: number }>(
-    `SELECT c.id, c.slug, c.name,
+  const baris = await query<{
+    id: number;
+    slug: CategorySlug;
+    name: string;
+    productCount: number;
+    is_active: number;
+  }>(
+    `SELECT c.id, c.slug, c.name, c.is_active,
             (SELECT COUNT(*) FROM products p WHERE p.category_id = c.id) AS productCount
        FROM categories c ORDER BY c.sort_order, c.name`,
   );
-  return baris.map((b) => ({ ...b, productCount: Number(b.productCount) }));
+  return baris.map((b) => ({
+    id: b.id,
+    slug: b.slug,
+    name: b.name,
+    productCount: Number(b.productCount),
+    isActive: b.is_active === 1,
+  }));
 }
 
 export type InputProduk = {
