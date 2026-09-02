@@ -92,6 +92,11 @@ export default async function Katalog({
   if (hanyaTersedia) hasil = hasil.filter((p) => p.inStock);
   hasil = urutkan(hasil, urut);
 
+  // Yang stoknya habis selalu turun ke bawah, apa pun urutan yang dipilih:
+  // barang yang tidak bisa dibeli tidak boleh menempati baris teratas.
+  const tersedia = hasil.filter((p) => p.inStock);
+  const habis = hasil.filter((p) => !p.inStock);
+
   const now = { kategori: sp.kategori, q: sp.q, urut: sp.urut, harga: sp.harga, stok: sp.stok };
   const adaFilter = Boolean(kategori || q || harga || hanyaTersedia);
 
@@ -148,6 +153,7 @@ export default async function Katalog({
       <div className="mt-6 flex items-center justify-between gap-4 text-sm">
         <p className="text-muted">
           {hasil.length} produk{q && <> untuk “{q}”</>}
+          {habis.length > 0 && <> · {habis.length} stok habis</>}
         </p>
         {adaFilter && (
           <Link href="/katalog" className="font-medium text-jingga hover:underline">
@@ -157,11 +163,30 @@ export default async function Katalog({
       </div>
 
       {hasil.length > 0 ? (
-        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {hasil.map((p, i) => (
-            <ProductCard key={p.slug} product={p} priority={i < 4} />
-          ))}
-        </div>
+        <>
+          {tersedia.length > 0 && (
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {tersedia.map((p, i) => (
+                <ProductCard key={p.slug} product={p} priority={i < 4} />
+              ))}
+            </div>
+          )}
+
+          {habis.length > 0 && (
+            <section className="mt-10 border-t border-line pt-6">
+              <h2 className="font-display text-lg font-bold">Stok habis</h2>
+              <p className="mt-1 max-w-lg text-sm text-ink-2">
+                {habis.length} produk di bawah ini sedang kosong dan belum bisa dipesan. Chat kami
+                lewat WhatsApp untuk tahu jadwal restoknya.
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {habis.map((p) => (
+                  <ProductCard key={p.slug} product={p} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       ) : (
         <div className="mt-10 rounded-2xl border border-line bg-surface p-10 text-center">
           <p className="font-display text-lg font-bold">Tidak ada yang cocok</p>

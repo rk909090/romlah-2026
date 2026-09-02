@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminHeading } from "@/components/admin/admin-shell";
 import { OrderStatusForm } from "@/components/admin/order-status-form";
+import { IkonWa } from "@/components/wa-button";
 import { SITE } from "@/data/site";
 import { tampilkanTelepon } from "@/lib/admin/customers";
 import { berat, rupiah } from "@/lib/format";
@@ -88,8 +89,11 @@ export default async function DetailPesanan({ params }: Props) {
             <div className="mt-4 flex flex-wrap gap-2">
               <a
                 href={waBalas}
-                className="rounded-lg border border-pandan px-4 py-2 text-xs font-semibold text-pandan transition hover:bg-pandan-soft"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg bg-wa px-4 py-2 text-xs font-semibold text-wa-ink transition hover:bg-wa-2"
               >
+                <IkonWa className="h-3.5 w-3.5" />
                 Balas di WhatsApp
               </a>
               <Link

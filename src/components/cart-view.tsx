@@ -9,6 +9,7 @@ import { berat, rupiah } from "@/lib/format";
 import type { Destination, ShippingRate } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 import { resolveLines, useCart } from "./cart-provider";
+import { IkonWa } from "./wa-button";
 
 type Tahap = "keranjang" | "konfirmasi";
 
@@ -245,8 +246,9 @@ export function CartView({
           href={pesanan.tautanWa}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-5 block rounded-xl bg-pandan px-6 py-4 text-center text-sm font-semibold text-pandan-ink shadow-float transition hover:brightness-110"
+          className="mt-5 flex items-center justify-center gap-2 rounded-xl bg-wa px-6 py-4 text-center text-sm font-semibold text-wa-ink shadow-float transition hover:bg-wa-2"
         >
+          <IkonWa />
           Buka WhatsApp
         </a>
         <Link
@@ -554,8 +556,9 @@ export function CartView({
               type="button"
               disabled={!bisaPesan || mengirim}
               onClick={kirimPesanan}
-              className="w-full rounded-xl bg-pandan px-5 py-4 text-sm font-semibold text-pandan-ink shadow-float transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-wa px-5 py-4 text-sm font-semibold text-wa-ink shadow-float transition hover:bg-wa-2 disabled:cursor-not-allowed disabled:opacity-45"
             >
+              <IkonWa />
               {mengirim ? "Menyimpan pesanan…" : "Pesan lewat WhatsApp"}
             </button>
 

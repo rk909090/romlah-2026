@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { BuyBar } from "@/components/buy-bar";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
+import { WaButton } from "@/components/wa-button";
 import { SITE } from "@/data/site";
 import { getProduct, getRelated } from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
@@ -45,9 +46,6 @@ export default async function HalamanProduk({ params }: Props) {
   if (!p) notFound();
 
   const terkait = await getRelated(slug, 4);
-  const waTanya = `https://wa.me/${SITE.whatsapp.number}?text=${encodeURIComponent(
-    `Halo Romlah, saya mau tanya soal ${p.name} (${SITE.url}/produk/${p.slug})`,
-  )}`;
 
   const jsonLd = {
     "@context": "https://schema.org",
@@ -111,12 +109,12 @@ export default async function HalamanProduk({ params }: Props) {
             <dd className="font-medium">Tanjung Barat, Jakarta Selatan</dd>
           </dl>
 
-          <a
-            href={waTanya}
-            className="mt-6 flex items-center justify-center gap-2 rounded-xl border border-pandan px-5 py-3.5 text-sm font-semibold text-pandan transition hover:bg-pandan-soft"
+          <WaButton
+            pesan={`Halo Romlah, saya mau tanya soal ${p.name} (${SITE.url}/produk/${p.slug})`}
+            className="mt-6"
           >
             Tanya lewat WhatsApp
-          </a>
+          </WaButton>
           <p className="mt-2 text-center text-xs text-muted">
             Dibalas jam {SITE.outlets[0].hours.split(", ")[1] ?? "09.00–17.00"}
           </p>

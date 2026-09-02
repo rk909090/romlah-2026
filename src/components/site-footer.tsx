@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SITE } from "@/data/site";
+import { WaButton } from "./wa-button";
 
 export function SiteFooter() {
   return (
@@ -30,6 +31,22 @@ export function SiteFooter() {
                 <span className={o.isOpen ? "" : "text-muted"}>{o.hours}</span>
               </li>
             ))}
+            <li>
+              <a
+                href={SITE.marketplace.tokopedia}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block font-medium text-ink hover:text-jingga"
+              >
+                Tokopedia ↗
+              </a>
+              <span>Toko daring, buka 24 jam</span>
+            </li>
+            <li>
+              <Link href="/toko" className="text-xs text-muted underline underline-offset-2 hover:text-ink-2">
+                Lihat semua toko
+              </Link>
+            </li>
           </ul>
         </div>
 
@@ -37,18 +54,13 @@ export function SiteFooter() {
           <h3 className="text-xs font-semibold tracking-widest text-muted uppercase">Hubungi</h3>
           <ul className="mt-3 space-y-2 text-sm text-ink-2">
             <li>
-              <a href={`https://wa.me/${SITE.whatsapp.number}`} className="font-medium text-pandan hover:underline">
-                WhatsApp {SITE.whatsapp.display}
-              </a>
+              <WaButton lebar="inline" ukuran="kecil">
+                {SITE.whatsapp.display}
+              </WaButton>
             </li>
             <li><a href={`tel:${SITE.phone}`} className="hover:text-jingga">{SITE.phone}</a></li>
             <li><a href={`mailto:${SITE.email}`} className="hover:text-jingga">{SITE.email}</a></li>
             <li className="pt-2 text-xs text-muted">{SITE.outlets[0].address}</li>
-            <li className="pt-1">
-              <a href={SITE.marketplace.tokopedia} className="text-xs text-muted underline underline-offset-2 hover:text-ink-2">
-                Toko kami di Tokopedia
-              </a>
-            </li>
           </ul>
         </div>
       </div>

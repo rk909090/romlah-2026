@@ -16,6 +16,13 @@ export const SITE = {
   phone: "021-7814342",
   email: "info.romlah@gmail.com",
 
+  /**
+   * Outlet fisik yang benar-benar melayani.
+   *
+   * Gerai Harmonie Exchange Mall dan Ibis Kemayoran sudah tidak beroperasi
+   * dan dihapus atas permintaan pemilik. Bendera isOpen dipertahankan supaya
+   * gerai yang suatu saat tutup sementara bisa ditandai tanpa dihapus.
+   */
   outlets: [
     {
       name: "Swadaya Tanjung Barat",
@@ -23,8 +30,6 @@ export const SITE = {
       hours: "Senin–Minggu, 09.00–17.00",
       isOpen: true,
     },
-    { name: "Harmonie Exchange Mall", address: "Jakarta Pusat", hours: "Tutup sementara", isOpen: false },
-    { name: "Ibis Kemayoran", address: "Jakarta Pusat", hours: "Tutup sementara", isOpen: false },
   ],
 
   marketplace: {

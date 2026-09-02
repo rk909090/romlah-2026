@@ -65,7 +65,7 @@ export function BuyBar({ slug, inStock }: { slug: string; inStock: boolean }) {
       <button
         type="button"
         onClick={() => {
-          tambah(slug, qty);
+          tambah(slug, qty, { diam: true });
           router.push("/keranjang");
         }}
         className="w-full rounded-xl bg-jingga px-4 py-3.5 text-sm font-semibold text-jingga-ink shadow-float transition hover:brightness-110 sm:w-auto sm:flex-1"

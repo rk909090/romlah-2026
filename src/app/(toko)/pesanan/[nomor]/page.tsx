@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { SITE } from "@/data/site";
+import { WaButton } from "@/components/wa-button";
 import { berat, rupiah } from "@/lib/format";
 import { labelStatus, LABEL_STATUS, STATUS_URUT } from "@/lib/order-status";
 import { getBarisPesanan, getPesananByNomor } from "@/lib/orders";
@@ -102,14 +102,12 @@ export default async function StatusPesanan({ params }: { params: Promise<{ nomo
         {pesanan.destination_label && <p className="text-ink-2">{pesanan.destination_label}</p>}
       </div>
 
-      <a
-        href={`https://wa.me/${SITE.whatsapp.number}?text=${encodeURIComponent(
-          `Halo Romlah, saya mau tanya soal pesanan ${pesanan.order_number}`,
-        )}`}
-        className="mt-5 block rounded-xl border border-pandan px-6 py-3.5 text-center text-sm font-semibold text-pandan transition hover:bg-pandan-soft"
+      <WaButton
+        pesan={`Halo Romlah, saya mau tanya soal pesanan ${pesanan.order_number}`}
+        className="mt-5"
       >
         Tanya lewat WhatsApp
-      </a>
+      </WaButton>
       <Link href="/katalog" className="mt-4 block text-center text-xs text-muted underline underline-offset-2">
         Belanja lagi
       </Link>

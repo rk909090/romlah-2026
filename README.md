@@ -19,7 +19,7 @@ pnpm build      # produksi
 | `/katalog` | 39 produk, penyaring kategori/harga/stok + pengurutan, semuanya lewat URL |
 | `/produk/[slug]` | Galeri, harga, berat, deskripsi, beli, JSON-LD `Product` |
 | `/keranjang` | Keranjang, alamat lengkap, email opsional, ongkir, dua jalur checkout |
-| `/toko` | Alamat & jam buka tiga outlet |
+| `/toko` | Alamat & jam buka outlet Tanjung Barat, plus toko Tokopedia |
 | `/api/ongkir/*` | Pencarian tujuan & hitung tarif (di server) |
 | `/admin/*` | Panel admin — lihat bagian tersendiri di bawah |
 
@@ -60,6 +60,8 @@ node --import ./scripts/ts-resolver.mjs scripts/midtrans-test.mjs # uji tanda ta
 node --import ./scripts/ts-resolver.mjs scripts/biteship-test.mjs # uji pencarian area & tarif
 node --import ./scripts/ts-resolver.mjs scripts/integration-test.mjs # pesanan + tarif Biteship sungguhan
 node scripts/biteship-origin.mjs 12530                            # cari ID area outlet asal
+node scripts/sync-deskripsi.mjs          # bandingkan deskripsi products.json vs DB
+node scripts/sync-deskripsi.mjs --tulis  # dorong deskripsi ke DB (hanya kolom description)
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan

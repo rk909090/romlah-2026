@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ProductCard } from "@/components/product-card";
+import { WaButton } from "@/components/wa-button";
 import { SITE, TESTIMONIALS } from "@/data/site";
 import {
   countByCategory,
@@ -30,9 +31,6 @@ export default async function Beranda() {
     getCategories(),
   ]);
   const jumlah = countByCategory(semua);
-  const waHalo = `https://wa.me/${SITE.whatsapp.number}?text=${encodeURIComponent(
-    "Halo Romlah, saya mau tanya-tanya soal oleh-oleh.",
-  )}`;
 
   return (
     <>
@@ -58,15 +56,9 @@ export default async function Beranda() {
               >
                 Belanja sekarang
               </Link>
-              <a
-                href={waHalo}
-                className="flex items-center gap-2 rounded-xl border border-pandan px-6 py-3.5 text-sm font-semibold text-pandan transition hover:bg-pandan-soft"
-              >
-                <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4" fill="currentColor">
-                  <path d="M12 2a10 10 0 0 0-8.7 14.9L2 22l5.3-1.4A10 10 0 1 0 12 2Zm5.5 14.1c-.2.6-1.2 1.2-1.7 1.2-.5.1-1 .1-3.1-.7-2.6-1.1-4.3-3.8-4.4-4-.1-.2-1-1.4-1-2.6s.6-1.8.9-2.1c.2-.2.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.3.5-.4.4c-.1.1-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.4 2.4 1.5.3.1.4.1.6-.1l.9-1c.2-.2.3-.2.6-.1l1.9.9c.3.1.5.2.5.4.1.1.1.7-.1 1.3Z" />
-                </svg>
+              <WaButton pesan="Halo Romlah, saya mau tanya-tanya soal oleh-oleh." lebar="inline">
                 Chat kami
-              </a>
+              </WaButton>
             </div>
 
             <p className="mt-5 text-xs text-muted">
@@ -207,9 +199,11 @@ export default async function Beranda() {
           <p className="text-sm text-muted">{SITE.outlets[0].hours}</p>
           <a
             href={SITE.maps}
+            target="_blank"
+            rel="noopener noreferrer"
             className="mt-5 inline-block rounded-xl border border-line-2 px-5 py-3 text-sm font-semibold transition hover:bg-sunken"
           >
-            Buka di Google Maps
+            Buka di Google Maps ↗
           </a>
         </div>
       </section>

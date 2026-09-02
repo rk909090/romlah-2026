@@ -32,6 +32,13 @@
   --pandan-ink: #ffffff;
   --pandan-soft: #e6f1ea;
 
+  /* Hijau merek WhatsApp. Teksnya sengaja gelap, bukan putih: putih di atas
+     #25D366 hanya beda 2:1 dan tidak terbaca. Hijau terang dengan tulisan
+     gelap mencapai 7,4:1 sekaligus tetap dikenali sebagai warna WhatsApp. */
+  --wa: #25d366;
+  --wa-ink: #0a2e17;
+  --wa-2: #1fb85a;
+
   --warn: #8a5d06;
   --warn-soft: #fbf1da;
 
@@ -54,6 +61,9 @@
   --color-pandan: var(--pandan);
   --color-pandan-ink: var(--pandan-ink);
   --color-pandan-soft: var(--pandan-soft);
+  --color-wa: var(--wa);
+  --color-wa-ink: var(--wa-ink);
+  --color-wa-2: var(--wa-2);
   --color-warn: var(--warn);
   --color-warn-soft: var(--warn-soft);
 

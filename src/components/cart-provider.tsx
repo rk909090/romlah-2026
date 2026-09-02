@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, useSyncExternalStore } from "react";
 import type { CartLine, Product, ResolvedCartLine } from "@/lib/types";
 
 const STORAGE_KEY = "romlah-keranjang-v1";
@@ -82,12 +82,17 @@ function ubah(fn: (prev: CartLine[]) => CartLine[]) {
 type CartContextValue = {
   lines: CartLine[];
   ready: boolean;
-  tambah: (slug: string, qty?: number) => void;
+  tambah: (slug: string, qty?: number, opsi?: { diam?: boolean }) => void;
   ubahQty: (slug: string, qty: number) => void;
   hapus: (slug: string) => void;
   kosongkan: () => void;
   jumlahItem: number;
   qtyDari: (slug: string) => number;
+  /* Keranjang mini — panel yang muncul begitu barang ditambahkan. */
+  miniBuka: boolean;
+  /** Slug yang paling terakhir ditambahkan, untuk disorot di panel. */
+  miniTerakhir: string | null;
+  tutupMini: () => void;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -95,14 +100,26 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const { lines, ready } = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const tambah = useCallback((slug: string, qty = 1) => {
+  // Panel keranjang mini. Dibiarkan di React state, bukan di localStorage:
+  // ini keadaan tampilan sesaat, tidak perlu bertahan antar-tab atau muat ulang.
+  const [miniBuka, setMiniBuka] = useState(false);
+  const [miniTerakhir, setMiniTerakhir] = useState<string | null>(null);
+
+  const tambah = useCallback((slug: string, qty = 1, opsi?: { diam?: boolean }) => {
     ubah((prev) => {
       const ada = prev.find((l) => l.slug === slug);
       return ada
         ? prev.map((l) => (l.slug === slug ? { ...l, qty: l.qty + qty } : l))
         : [...prev, { slug, qty }];
     });
+    // `diam` dipakai tombol "Beli", yang langsung pindah ke halaman keranjang:
+    // panel yang terbuka lalu ikut hilang saat pindah halaman cuma berkedip.
+    if (opsi?.diam) return;
+    setMiniTerakhir(slug);
+    setMiniBuka(true);
   }, []);
+
+  const tutupMini = useCallback(() => setMiniBuka(false), []);
 
   const ubahQty = useCallback((slug: string, qty: number) => {
     ubah((prev) =>
@@ -126,8 +143,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       kosongkan,
       jumlahItem: lines.reduce((n, l) => n + l.qty, 0),
       qtyDari: (slug: string) => lines.find((l) => l.slug === slug)?.qty ?? 0,
+      miniBuka,
+      miniTerakhir,
+      tutupMini,
     }),
-    [lines, ready, tambah, ubahQty, hapus, kosongkan],
+    [lines, ready, tambah, ubahQty, hapus, kosongkan, miniBuka, miniTerakhir, tutupMini],
   );
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
