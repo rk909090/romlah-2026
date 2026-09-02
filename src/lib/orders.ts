@@ -1,5 +1,6 @@
 import { randomInt } from "node:crypto";
 import { normalkanTelepon } from "./admin/customers";
+import { periksaPromo, tebusPromo } from "./admin/promo";
 import { query, queryOne, transaksi } from "./db";
 import { getPengaturan, ongkirSetelahProgram } from "./settings";
 import { AMBIL_DI_TOKO, hitungOngkir, type Destination } from "./shipping";
@@ -18,6 +19,8 @@ export type PesananMasuk = {
   kurirLayanan: string;
   /** "whatsapp" menunggu konfirmasi admin; "web" langsung menunggu pembayaran. */
   channel?: "web" | "whatsapp";
+  /** Kode promo yang diketik pembeli. Divalidasi ulang di server. */
+  kodePromo?: string;
 };
 
 export type PesananTersimpan = {
@@ -26,6 +29,10 @@ export type PesananTersimpan = {
   email: string | null;
   subtotal: number;
   shippingCost: number;
+  /** Kode yang benar-benar dipakai, sudah dibakukan. null bila tidak ada. */
+  promoCode: string | null;
+  /** Potongan total: barang + ongkir. */
+  discount: number;
   total: number;
   weightGram: number;
   items: { name: string; qty: number; unitPrice: number; lineTotal: number }[];
@@ -139,10 +146,36 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
     shippingCost = ongkirSetelahProgram(dipilih.cost, subtotal, gratisOngkir);
   }
 
-  const total = subtotal + shippingCost;
+  /* ── Kode promo, juga dihitung ulang di server ──────────────────── */
+  // Yang dikirim browser hanya KODE-nya. Besaran potongannya tidak pernah
+  // diterima dari klien — kalau iya, siapa pun bisa mengarang potongan
+  // lewat permintaan langsung.
+  let promoCode: string | null = null;
+  let promoId: number | null = null;
+  let diskonBarang = 0;
+  let diskonOngkir = 0;
+
+  if (masuk.kodePromo?.trim()) {
+    const p = await periksaPromo(masuk.kodePromo, subtotal, shippingCost, teleponBaku);
+    if (!p.ok) throw new Error(p.alasan);
+    promoCode = p.promo.code;
+    promoId = p.promo.id;
+    diskonBarang = p.hasil.diskonBarang;
+    diskonOngkir = p.hasil.diskonOngkir;
+  }
+
+  const discount = diskonBarang + diskonOngkir;
+  const total = Math.max(0, subtotal + shippingCost - discount);
 
   /* ── Tulis dalam satu transaksi ─────────────────────────────────── */
   const tersimpan = await transaksi(async (tx) => {
+    // Penebusan kuota menyatu dengan penulisan pesanan: kalau kuotanya habis
+    // tepat pada detik ini, seluruh transaksi dibatalkan dan tidak ada
+    // pesanan setengah jadi yang tertinggal.
+    if (promoId !== null && !(await tebusPromo(tx, promoId))) {
+      throw new Error("Kuota kode promo baru saja habis. Coba tanpa kode promo.");
+    }
+
     await tx.execute(
       // Email yang sudah tersimpan tidak dihapus bila pesanan berikutnya
       // dikirim tanpa email.
@@ -199,8 +232,9 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
           `INSERT INTO orders
              (order_number, customer_id, channel, status, customer_name, customer_phone,
               customer_email, address, destination_id, destination_label, courier,
-              courier_service, etd, subtotal, shipping_cost, total, weight_gram)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              courier_service, etd, subtotal, shipping_cost, promo_code, discount,
+              total, weight_gram)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             orderNumber,
             customerId,
@@ -217,6 +251,8 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
             etd,
             subtotal,
             shippingCost,
+            promoCode,
+            discount,
             total,
             weightGram,
           ],
@@ -246,6 +282,8 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
     email,
     subtotal,
     shippingCost,
+    promoCode,
+    discount,
     total,
     weightGram,
     items: baris.map((b) => ({ name: b.name, qty: b.qty, unitPrice: b.unitPrice, lineTotal: b.lineTotal })),
@@ -273,6 +311,8 @@ export type PesananLengkap = {
   etd: string | null;
   subtotal: number;
   shipping_cost: number;
+  promo_code: string | null;
+  discount: number;
   total: number;
   weight_gram: number;
   tracking_number: string | null;

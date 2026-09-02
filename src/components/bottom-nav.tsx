@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "./cart-provider";
 import { IkonWa, WaButton } from "./wa-button";
+import { useWaKonteks } from "./wa-konteks";
 
 const TABS = [
   { href: "/", label: "Beranda", d: "M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z" },
@@ -15,6 +16,8 @@ const TABS = [
 export function BottomNav({ paketAktif }: { paketAktif: boolean }) {
   const pathname = usePathname();
   const { jumlahItem, ready } = useCart();
+  // Pesan WhatsApp mengikuti halaman yang sedang dibuka; lihat wa-konteks.tsx.
+  const wa = useWaKonteks();
 
   // Tab Paket hilang selama kategorinya dimatikan; tanpa ini tab-nya tetap
   // ada tapi membuka katalog kosong.
@@ -60,8 +63,9 @@ export function BottomNav({ paketAktif }: { paketAktif: boolean }) {
             yang hanya tampil di layar lebar. */}
         <li className="flex-1">
           <WaButton
-            pesan="Halo Romlah, saya mau tanya-tanya soal oleh-oleh."
-            sumber="lain"
+            pesan={wa.pesan}
+            sumber={wa.sumber}
+            produkSlug={wa.produkSlug}
             tampilan="polos"
             className={`${kelasTab} text-wa-2`}
           >

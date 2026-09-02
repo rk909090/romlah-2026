@@ -5,6 +5,7 @@ import { BuyBar } from "@/components/buy-bar";
 import { ProductCard } from "@/components/product-card";
 import { ProductGallery } from "@/components/product-gallery";
 import { WaButton } from "@/components/wa-button";
+import { SetWaKonteks } from "@/components/wa-konteks";
 import { SITE } from "@/data/site";
 import { getIsiPaketToko, getProduct, getRelated } from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
@@ -47,6 +48,10 @@ export default async function HalamanProduk({ params }: Props) {
 
   const [terkait, isiPaket] = await Promise.all([getRelated(slug, 4), getIsiPaketToko(slug)]);
 
+  // Dipakai tombol di badan halaman DAN tombol WhatsApp yang menempel di
+  // layar, supaya pertanyaannya sama persis dari mana pun ditekan.
+  const pesanWa = `Halo Romlah, saya mau tanya soal ${p.name} (${SITE.url}/produk/${p.slug})`;
+
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
@@ -67,6 +72,10 @@ export default async function HalamanProduk({ params }: Props) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+
+      {/* Selama halaman ini terbuka, tombol WhatsApp mengambang dan tab
+          WhatsApp di bilah bawah ikut menanyakan produk ini. */}
+      <SetWaKonteks pesan={pesanWa} sumber="produk" produkSlug={p.slug} />
 
       <nav aria-label="Remah roti" className="mb-5 text-sm text-muted">
         <Link href="/" className="hover:text-jingga">Beranda</Link>
@@ -128,12 +137,7 @@ export default async function HalamanProduk({ params }: Props) {
             <dd className="font-medium">Tanjung Barat, Jakarta Selatan</dd>
           </dl>
 
-          <WaButton
-            pesan={`Halo Romlah, saya mau tanya soal ${p.name} (${SITE.url}/produk/${p.slug})`}
-            sumber="produk"
-            produkSlug={p.slug}
-            className="mt-6"
-          >
+          <WaButton pesan={pesanWa} sumber="produk" produkSlug={p.slug} className="mt-6">
             Tanya lewat WhatsApp
           </WaButton>
           <p className="mt-2 text-center text-xs text-muted">

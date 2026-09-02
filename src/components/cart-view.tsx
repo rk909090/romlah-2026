@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { bayarSekarang, buatPesanan, type HasilPesanan } from "@/app/(toko)/actions";
+import { bayarSekarang, buatPesanan, cekPromo, type HasilPesanan } from "@/app/(toko)/actions";
 import { berat, rupiah } from "@/lib/format";
 import {
   kurangGratisOngkir,
@@ -58,6 +58,15 @@ export function CartView({
   const [galat, setGalat] = useState("");
   const [mengirim, setMengirim] = useState(false);
   const [membayar, setMembayar] = useState(false);
+
+  // Kode promo. Yang disimpan hanya KODE-nya; besaran potongannya dihitung
+  // ulang di server saat pesanan disimpan, jadi angka di sini murni tampilan.
+  const [kodeKetik, setKodeKetik] = useState("");
+  const [promo, setPromo] = useState<{
+    kode: string; diskonBarang: number; diskonOngkir: number; total: number; ringkas: string;
+  } | null>(null);
+  const [galatPromo, setGalatPromo] = useState("");
+  const [cekJalan, setCekJalan] = useState(false);
 
   /** Ketikan baru berarti tujuan lama tidak berlaku lagi — dibereskan di sini,
    *  di penangan peristiwa, bukan lewat effect. */
@@ -127,9 +136,15 @@ export function CartView({
   const ongkir = pilihTarif
     ? ongkirSetelahProgram(pilihTarif.cost, subtotal, gratisOngkir, pilihTarif.code === "pickup")
     : 0;
-  const total = subtotal + ongkir;
   const kurang = kurangGratisOngkir(subtotal, gratisOngkir);
   const sudahGratis = memenuhiGratisOngkir(subtotal, gratisOngkir);
+
+  // Potongan promo tidak boleh melebihi apa yang dipotongnya, bahkan kalau
+  // isi keranjang berubah setelah kodenya diperiksa.
+  const diskonBarang = Math.min(promo?.diskonBarang ?? 0, subtotal);
+  const diskonOngkir = Math.min(promo?.diskonOngkir ?? 0, ongkir);
+  const diskon = diskonBarang + diskonOngkir;
+  const total = Math.max(0, subtotal + ongkir - diskon);
 
   // Alamat lengkap wajib untuk pengiriman kurir: tanpa nama jalan, paketnya
   // tidak bisa diantar. Ambil di toko tidak memerlukannya.
@@ -151,6 +166,30 @@ export function CartView({
   if (!tujuan) belumLengkap.push("kecamatan atau kode pos");
   else if (!pilihTarif) belumLengkap.push("pilihan kurir");
 
+  async function terapkanPromo() {
+    if (cekJalan) return;
+    setCekJalan(true);
+    setGalatPromo("");
+    const r = await cekPromo(kodeKetik, subtotal, ongkir, telepon);
+    setCekJalan(false);
+    if (!r.ok) {
+      setPromo(null);
+      setGalatPromo(r.error);
+      return;
+    }
+    setPromo({
+      kode: r.kode, diskonBarang: r.diskonBarang, diskonOngkir: r.diskonOngkir,
+      total: r.total, ringkas: r.ringkas,
+    });
+    setKodeKetik(r.kode);
+  }
+
+  function lepasPromo() {
+    setPromo(null);
+    setKodeKetik("");
+    setGalatPromo("");
+  }
+
   async function kirimPesanan() {
     if (!bisaPesan || mengirim) return;
     setMengirim(true);
@@ -164,6 +203,7 @@ export function CartView({
       tujuan,
       kurirKode: pilihTarif!.code,
       kurirLayanan: pilihTarif!.service,
+      kodePromo: promo?.kode,
     });
     setMengirim(false);
 
@@ -191,6 +231,7 @@ export function CartView({
       tujuan,
       kurirKode: pilihTarif!.code,
       kurirLayanan: pilihTarif!.service,
+      kodePromo: promo?.kode,
     });
 
     if (!r.ok) {
@@ -247,6 +288,12 @@ export function CartView({
           <dd className="tabular text-right font-medium">
             {p.shippingCost === 0 ? "Gratis" : rupiah(p.shippingCost)}
           </dd>
+          {p.discount > 0 && (
+            <>
+              <dt className="text-pandan">Promo {p.promoCode}</dt>
+              <dd className="tabular text-right text-pandan">-{rupiah(p.discount)}</dd>
+            </>
+          )}
           <dt className="border-t border-line pt-2 font-bold">Total</dt>
           <dd className="tabular border-t border-line pt-2 text-right font-bold">{rupiah(p.total)}</dd>
         </dl>
@@ -562,11 +609,81 @@ export function CartView({
                 {!pilihTarif ? <span className="text-muted">Isi alamat dulu</span> : ongkir === 0 ? "Gratis" : rupiah(ongkir)}
               </dd>
             </div>
+            {diskon > 0 && (
+              <div className="flex justify-between text-pandan">
+                <dt>Promo {promo?.kode}</dt>
+                <dd className="tabular font-medium">-{rupiah(diskon)}</dd>
+              </div>
+            )}
             <div className="flex justify-between border-t border-line pt-3 text-base font-bold">
               <dt>Total</dt>
               <dd className="tabular">{rupiah(total)}</dd>
             </div>
           </dl>
+
+          {/* Kode promo. Yang dikirim ke server hanya kodenya; besaran
+              potongannya dihitung ulang di sana. */}
+          <div className="mt-4 border-t border-line pt-4">
+            {promo ? (
+              <div className="rounded-xl border border-pandan/40 bg-pandan-soft p-3.5">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="tabular text-sm font-bold text-pandan">{promo.kode}</p>
+                    <p className="mt-0.5 text-xs leading-relaxed text-ink-2">{promo.ringkas}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={lepasPromo}
+                    className="shrink-0 text-xs font-semibold text-ink-2 underline underline-offset-2 hover:text-jingga"
+                  >
+                    Lepas
+                  </button>
+                </div>
+                {(promo.diskonOngkir > 0 && ongkir === 0) && (
+                  <p className="mt-2 text-xs text-ink-2">
+                    Ongkirnya sudah gratis dari program toko, jadi potongan ongkir kode ini tidak terpakai.
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <label className="flex-1">
+                  <span className="sr-only">Kode promo</span>
+                  <input
+                    value={kodeKetik}
+                    onChange={(e) => {
+                      setKodeKetik(e.target.value);
+                      setGalatPromo("");
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void terapkanPromo();
+                      }
+                    }}
+                    placeholder="Punya kode promo?"
+                    autoComplete="off"
+                    autoCapitalize="characters"
+                    className="w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm uppercase focus:border-jingga focus:outline-none"
+                  />
+                </label>
+                <button
+                  type="button"
+                  onClick={terapkanPromo}
+                  disabled={cekJalan || !kodeKetik.trim()}
+                  className="shrink-0 rounded-xl border border-line-2 px-4 py-3 text-sm font-semibold transition hover:bg-sunken disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                  {cekJalan ? "Cek..." : "Pakai"}
+                </button>
+              </div>
+            )}
+
+            {galatPromo && (
+              <p role="alert" className="mt-2 text-xs leading-relaxed text-jingga">
+                {galatPromo}
+              </p>
+            )}
+          </div>
 
           {/* Dua jalur setara — WhatsApp adalah kanal terbesar Romlah. */}
           <div className="mt-5 space-y-2.5">

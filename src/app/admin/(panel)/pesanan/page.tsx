@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
 import { DateFilter } from "@/components/admin/date-filter";
+import { bacaHalaman, Pagination } from "@/components/admin/pagination";
 import { bacaRentang, syaratRentang } from "@/lib/admin/rentang";
 import { query, type SqlParam } from "@/lib/db";
 import { rupiah } from "@/lib/format";
@@ -37,7 +38,10 @@ const kelasChip = (aktif: boolean) =>
 export default async function Pesanan({
   searchParams,
 }: {
-  searchParams: Promise<{ rentang?: string; dari?: string; sampai?: string; status?: string; q?: string }>;
+  searchParams: Promise<{
+    rentang?: string; dari?: string; sampai?: string;
+    status?: string; q?: string; hal?: string; per?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const r = bacaRentang(sp);
@@ -62,35 +66,40 @@ export default async function Pesanan({
   }
   const where = syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "";
 
-  const [pesanan, ringkas] = await Promise.all([
-    query<BarisPesanan>(
-      `SELECT id, order_number, channel, status, customer_name, customer_phone, total, created_at
-         FROM orders${where} ORDER BY created_at DESC LIMIT 300`,
-      nilai,
-    ),
-    // Ringkasan dihitung di basis data atas SELURUH hasil saringan, bukan
-    // dari 300 baris yang kebetulan terambil — kalau tidak, angkanya bohong
-    // begitu hasilnya lebih dari batas itu.
-    query<{ jumlah: number; nilai: number; jadi: number; nilaiJadi: number }>(
-      `SELECT COUNT(*) AS jumlah,
-              COALESCE(SUM(total), 0) AS nilai,
-              SUM(status NOT IN (${STATUS_BATAL.map(() => "?").join(",")})) AS jadi,
-              COALESCE(SUM(CASE WHEN status NOT IN (${STATUS_BATAL.map(() => "?").join(",")})
-                                THEN total ELSE 0 END), 0) AS nilaiJadi
-         FROM orders${where}`,
-      [...STATUS_BATAL, ...STATUS_BATAL, ...nilai],
-    ),
-  ]);
+  // Ringkasan dihitung di basis data atas SELURUH hasil saringan, bukan dari
+  // baris yang kebetulan terambil pada halaman ini — kalau tidak, angkanya
+  // berubah-ubah mengikuti halaman yang sedang dibuka.
+  const ringkas = await query<{ jumlah: number; nilai: number; jadi: number; nilaiJadi: number }>(
+    `SELECT COUNT(*) AS jumlah,
+            COALESCE(SUM(total), 0) AS nilai,
+            SUM(status NOT IN (${STATUS_BATAL.map(() => "?").join(",")})) AS jadi,
+            COALESCE(SUM(CASE WHEN status NOT IN (${STATUS_BATAL.map(() => "?").join(",")})
+                              THEN total ELSE 0 END), 0) AS nilaiJadi
+       FROM orders${where}`,
+    [...STATUS_BATAL, ...STATUS_BATAL, ...nilai],
+  );
 
   const s = ringkas[0];
   const jumlah = Number(s?.jumlah ?? 0);
+  const h = bacaHalaman(sp, jumlah);
+
+  // LIMIT/OFFSET sebagai angka yang sudah dibulatkan; MariaDB menolak
+  // placeholder di posisi ini pada pernyataan yang disiapkan.
+  const pesanan = await query<BarisPesanan>(
+    `SELECT id, order_number, channel, status, customer_name, customer_phone, total, created_at
+       FROM orders${where} ORDER BY created_at DESC
+      LIMIT ${Math.floor(h.per)} OFFSET ${Math.floor(h.lewati)}`,
+    nilai,
+  );
   const jadi = Number(s?.jadi ?? 0);
   const nilaiJadi = Number(s?.nilaiJadi ?? 0);
   const adaSaringan = r.aktif || Boolean(status) || Boolean(q);
 
   const href = (patch: Record<string, string | undefined>) => {
     const p = new URLSearchParams();
-    const next = { rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai, status: sp.status, q: sp.q, ...patch };
+    // `hal` sengaja tidak dibawa: mengganti status harus memulai dari
+    // halaman 1, kalau tidak hasilnya bisa mendarat di halaman kosong.
+    const next = { rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai, status: sp.status, q: sp.q, per: sp.per, ...patch };
     for (const [k, v] of Object.entries(next)) if (v) p.set(k, v);
     const t = p.toString();
     return t ? `/admin/pesanan?${t}` : "/admin/pesanan";
@@ -107,6 +116,7 @@ export default async function Pesanan({
         {sp.dari && <input type="hidden" name="dari" value={sp.dari} />}
         {sp.sampai && <input type="hidden" name="sampai" value={sp.sampai} />}
         {sp.status && <input type="hidden" name="status" value={sp.status} />}
+        {sp.per && <input type="hidden" name="per" value={sp.per} />}
         <input
           name="q"
           defaultValue={sp.q ?? ""}
@@ -232,12 +242,15 @@ export default async function Pesanan({
             </div>
           </div>
 
-          {jumlah > pesanan.length && (
-            <p className="mt-3 text-center text-xs text-muted">
-              Menampilkan {pesanan.length} terbaru dari {jumlah} pesanan. Persempit periodenya untuk
-              melihat sisanya.
-            </p>
-          )}
+          <Pagination
+            basePath="/admin/pesanan"
+            h={h}
+            lain={{
+              rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai,
+              status: sp.status, q: sp.q, per: sp.per,
+            }}
+            satuan="pesanan"
+          />
         </>
       )}
     </>

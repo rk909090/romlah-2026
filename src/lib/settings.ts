@@ -1,17 +1,21 @@
 import { cache } from "react";
 import { execute, query } from "./db";
-import { BAWAAN, type Pengaturan } from "./promo";
+import { BAWAAN, bersihkanSlides, type Pengaturan } from "./promo";
 
 // Diteruskan lagi supaya pemanggil di sisi server cukup mengimpor satu
 // modul. Komponen "use client" WAJIB mengimpor dari ./promo, bukan dari
 // sini — berkas ini menyentuh mysql2.
 export {
   BAWAAN,
+  MAKS_SLIDE,
+  SLIDE_KOSONG,
+  bersihkanSlides,
   kurangGratisOngkir,
   memenuhiGratisOngkir,
   ongkirSetelahProgram,
+  tautanAman,
 } from "./promo";
-export type { Banner, Checkout, GratisOngkir, Pengaturan } from "./promo";
+export type { Banner, Checkout, GratisOngkir, Pengaturan, Slide, Slider } from "./promo";
 
 /**
  * Pengaturan toko yang bisa diubah dari panel admin.
@@ -30,6 +34,7 @@ const KUNCI = {
   gratisOngkir: "gratis_ongkir",
   checkout: "checkout",
   banner: "banner",
+  slider: "slider",
 } as const satisfies Record<keyof Pengaturan, string>;
 
 const KE_BIDANG = Object.fromEntries(
@@ -74,6 +79,7 @@ export const getPengaturan = cache(async function getPengaturan(): Promise<Penga
     gratisOngkir: { ...BAWAAN.gratisOngkir },
     checkout: { ...BAWAAN.checkout },
     banner: { ...BAWAAN.banner },
+    slider: { ...BAWAAN.slider, slides: [] },
   };
 
   for (const b of baris) {
@@ -85,6 +91,18 @@ export const getPengaturan = cache(async function getPengaturan(): Promise<Penga
     } catch {
       continue;
     }
+    if (bidang === "slider") {
+      // Slider berisi LARIK OBJEK, jadi pemeriksaan tipe per bidang yang
+      // dipakai pengaturan lain tidak cukup. Isinya dibersihkan satu per
+      // satu; slide yang alamat gambarnya tidak masuk akal dibuang.
+      const o = isi && typeof isi === "object" ? (isi as Record<string, unknown>) : {};
+      hasil.slider = {
+        aktif: typeof o.aktif === "boolean" ? o.aktif : BAWAAN.slider.aktif,
+        slides: bersihkanSlides(o.slides),
+      };
+      continue;
+    }
+
     // @ts-expect-error — bidang menentukan bentuknya, dan gabung() menjaga
     // setiap nilai tetap bertipe sama dengan bawaannya.
     hasil[bidang] = gabung(BAWAAN[bidang], isi);

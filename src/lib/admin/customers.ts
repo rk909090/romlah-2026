@@ -1,4 +1,4 @@
-import { execute, query, queryOne } from "../db";
+import { execute, query, queryOne, type SqlParam } from "../db";
 
 export type AdminCustomer = {
   id: number;
@@ -52,23 +52,40 @@ const petakan = (b: AdminCustomer): AdminCustomer => ({
   totalSpent: Number(b.totalSpent),
 });
 
-export async function listCustomers(q?: string): Promise<AdminCustomer[]> {
-  if (q?.trim()) {
-    const cari = `%${q.trim()}%`;
-    // Pencarian juga menerima nomor dalam format apa pun, karena
-    // nomor yang diketik dinormalkan lebih dulu.
-    const telepon = `%${normalkanTelepon(q)}%`;
-    const baris = await query<AdminCustomer>(
-      `${PILIH} WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?
-        ORDER BY c.last_order_at IS NULL, c.last_order_at DESC, c.name`,
-      [cari, telepon, cari],
-    );
-    return baris.map(petakan);
-  }
+/** WHERE dan nilainya, dipakai bersama oleh daftar dan hitungan. */
+function syaratPelanggan(q?: string): { where: string; nilai: SqlParam[] } {
+  if (!q?.trim()) return { where: "", nilai: [] };
+  const cari = `%${q.trim()}%`;
+  // Pencarian juga menerima nomor dalam format apa pun, karena nomor yang
+  // diketik dinormalkan lebih dulu.
+  return {
+    where: " WHERE c.name LIKE ? OR c.phone LIKE ? OR c.email LIKE ?",
+    nilai: [cari, `%${normalkanTelepon(q)}%`, cari],
+  };
+}
+
+export async function listCustomers(
+  q?: string,
+  paging?: { per: number; lewati: number },
+): Promise<AdminCustomer[]> {
+  const { where, nilai } = syaratPelanggan(q);
+  // LIMIT/OFFSET sebagai angka yang sudah dibulatkan; MariaDB menolak
+  // placeholder di posisi ini pada pernyataan yang disiapkan.
+  const batas = paging
+    ? ` LIMIT ${Math.max(1, Math.floor(paging.per))} OFFSET ${Math.max(0, Math.floor(paging.lewati))}`
+    : "";
   const baris = await query<AdminCustomer>(
-    `${PILIH} ORDER BY c.last_order_at IS NULL, c.last_order_at DESC, c.name`,
+    `${PILIH}${where} ORDER BY c.last_order_at IS NULL, c.last_order_at DESC, c.name${batas}`,
+    nilai,
   );
   return baris.map(petakan);
+}
+
+/** Jumlah pelanggan yang cocok dengan pencarian — pasangan listCustomers. */
+export async function countCustomersCocok(q?: string): Promise<number> {
+  const { where, nilai } = syaratPelanggan(q);
+  const b = await queryOne<{ n: number }>(`SELECT COUNT(*) AS n FROM customers c${where}`, nilai);
+  return Number(b?.n ?? 0);
 }
 
 export async function getCustomer(id: number): Promise<AdminCustomer | undefined> {

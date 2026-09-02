@@ -15,7 +15,7 @@ pnpm build      # produksi
 
 | Rute | Isi |
 | --- | --- |
-| `/` | Beranda: hero, chip kategori, produk unggulan, paket, alasan, outlet |
+| `/` | Beranda: slider 16:9, hero, produk unggulan, paket, alasan, outlet |
 | `/katalog` | 39 produk, penyaring kategori/harga/stok + pengurutan, semuanya lewat URL |
 | `/produk/[slug]` | Galeri, harga, berat, deskripsi, beli, JSON-LD `Product` |
 | `/keranjang` | Keranjang, alamat lengkap, email opsional, ongkir, dua jalur checkout |
@@ -32,10 +32,10 @@ dikembalikan ke SSG untuk mempercepatnya.
 
 ## Basis data
 
-MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — dua belas tabel:
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — tiga belas tabel:
 `admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
 `customers`, `customer_addresses`, `orders`, `order_items`, `package_items`,
-`wa_leads`, `settings`.
+`wa_leads`, `settings`, `promo_codes`.
 
 **Server basis datanya berjalan di UTC**, sedangkan tokonya di Jakarta (WIB,
 UTC+7) — diperiksa langsung: `NOW()` sama persis dengan `UTC_TIMESTAMP()`.
@@ -72,6 +72,7 @@ node scripts/sync-deskripsi.mjs          # bandingkan deskripsi products.json vs
 node scripts/sync-deskripsi.mjs --tulis  # dorong deskripsi ke DB (hanya kolom description)
 node --import ./scripts/ts-resolver.mjs scripts/paket-lead-test.mjs # uji paket & prospek WA
 node --import ./scripts/ts-resolver.mjs scripts/rentang-promo-test.mjs # uji rentang tanggal & program
+node --import ./scripts/ts-resolver.mjs scripts/promo-test.mjs # uji kode promo & kuota serentak
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan
@@ -139,8 +140,17 @@ Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
 | `/admin/marketing/paket/baru`, `/admin/marketing/paket/[id]` | Buat, ubah, hapus paket |
 | `/admin/marketing/ongkir` | Program kirim gratis: nyala/mati, minimal belanja, batas potongan |
 | `/admin/marketing/checkout` | Tampilkan atau sembunyikan tombol "Pesan lewat WhatsApp" |
+| `/admin/marketing/promo` | Kode promo: daftar, buat, ubah, hapus |
+| `/admin/marketing/slider` | Slide 16:9 di paling atas beranda |
+| `/admin/marketing/unggulan` | Pilih dan urutkan produk di baris "Sering jadi pilihan" |
 | `/admin/marketing/banner` | Banner pengumuman di paling atas toko |
 | `/admin/marketing/ekspor` | Unduh prospek, pelanggan, dan pesanan sebagai CSV |
+
+Daftar di `/admin/produk`, `/admin/pesanan`, `/admin/pelanggan`, dan
+`/admin/inquiry` memakai paging lewat URL (`hal` dan `per`), dengan pilihan
+25/50/100/200 baris. Jumlah total selalu dihitung dengan agregat terpisah,
+bukan dari baris yang kebetulan terambil — kalau tidak, angka ringkasannya
+berubah-ubah mengikuti halaman yang sedang dibuka.
 | `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
 
 Beberapa keputusan keamanan:
@@ -222,6 +232,41 @@ lewat `package_items`. Dua aturan yang membedakannya:
 Kategori Paket bisa dimatikan dari `/admin/marketing`. Saat mati, seluruh
 paket hilang dari katalog, beranda, menu, tab bar, dan footer — dan halaman
 produknya membalas 404. Datanya utuh dan bisa dinyalakan lagi kapan saja.
+
+## Kode promo
+
+Aturan hitungannya di `src/lib/promo-kode.ts`, tanpa impor apa pun, sehingga
+halaman keranjang bisa memakainya tanpa menyeret mysql2 ke peramban. Tiga
+jenis: potongan persen, potongan rupiah, dan potongan ongkir.
+
+**Yang dikirim peramban hanya KODE-nya.** Besaran potongan selalu dihitung
+ulang di server saat pesanan disimpan; memalsukan angka di klien tidak
+menghasilkan potongan apa pun. Pemeriksaan di keranjang sengaja tidak menebus
+kuota — pembeli boleh mencoba beberapa kode tanpa menghabiskan jatah orang
+lain.
+
+**Kuota dijaga dengan UPDATE bersyarat di dalam transaksi pesanan**, bukan
+baca-lalu-tulis:
+
+```sql
+UPDATE promo_codes SET terpakai = terpakai + 1
+ WHERE id = ? AND (kuota IS NULL OR terpakai < kuota) AND …
+```
+
+Diuji dengan 10 penebusan serentak pada kuota 3; hasilnya tepat 3 yang
+berhasil. Kalau kuotanya habis persis pada detik itu, seluruh transaksi
+dibatalkan dan tidak ada pesanan setengah jadi yang tertinggal.
+
+Potongan dikirim ke Midtrans sebagai satu baris `item_details` berharga
+NEGATIF, karena Snap menolak transaksi bila jumlah rinciannya tidak sama
+persis dengan `gross_amount`. Penjumlahannya diperiksa lebih dulu di
+`buatTransaksiSnap()`, jadi ketidakcocokan muncul sebagai galat yang jelas,
+bukan penolakan Midtrans yang membingungkan.
+
+> **Belum diuji terhadap Midtrans sungguhan.** Kunci yang terpasang adalah
+> kunci PRODUKSI, dan menguji baris berharga negatif berarti membuat
+> transaksi dengan uang sungguhan. Uji dengan kunci sandbox, atau dengan satu
+> pesanan bernilai kecil, sebelum kode promo diumumkan ke pembeli.
 
 ## Pelacakan
 

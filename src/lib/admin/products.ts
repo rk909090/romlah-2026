@@ -1,4 +1,4 @@
-import { execute, query, queryOne, type SqlParam } from "../db";
+import { execute, query, queryOne, transaksi, type SqlParam } from "../db";
 import type { CategorySlug } from "../types";
 
 /** Bentuk produk untuk panel admin — mentah, tanpa penyesuaian tampilan toko. */
@@ -59,7 +59,14 @@ export type FilterProduk = {
   status?: "aktif" | "arsip" | "habis";
 };
 
-export async function listProducts(f: FilterProduk = {}): Promise<AdminProduct[]> {
+/**
+ * Bangun WHERE sekali, dipakai daftar maupun hitungan.
+ *
+ * Dipisah supaya jumlah total tidak mungkin memakai saringan yang berbeda
+ * dari tabelnya — dua kueri dengan syarat yang menyimpang membuat paging
+ * menunjukkan halaman yang isinya tidak ada.
+ */
+function syaratProduk(f: FilterProduk): { where: string; nilai: SqlParam[] } {
   const syarat: string[] = [];
   const nilai: SqlParam[] = [];
 
@@ -75,9 +82,34 @@ export async function listProducts(f: FilterProduk = {}): Promise<AdminProduct[]
   if (f.status === "arsip") syarat.push("p.is_active = 0");
   if (f.status === "habis") syarat.push("p.in_stock = 0");
 
-  const where = syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "";
-  const baris = await query<Baris>(`${PILIH}${where} ORDER BY p.updated_at DESC, p.name`, nilai);
+  return { where: syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "", nilai };
+}
+
+export async function listProducts(
+  f: FilterProduk = {},
+  paging?: { per: number; lewati: number },
+): Promise<AdminProduct[]> {
+  const { where, nilai } = syaratProduk(f);
+  // LIMIT/OFFSET disisipkan sebagai ANGKA yang sudah dibulatkan, bukan
+  // parameter terikat: MariaDB menolak placeholder di posisi ini pada
+  // pernyataan yang disiapkan.
+  const batas = paging
+    ? ` LIMIT ${Math.max(1, Math.floor(paging.per))} OFFSET ${Math.max(0, Math.floor(paging.lewati))}`
+    : "";
+  const baris = await query<Baris>(
+    `${PILIH}${where} ORDER BY p.updated_at DESC, p.name${batas}`,
+    nilai,
+  );
   return baris.map(petakan);
+}
+
+export async function countProducts(f: FilterProduk = {}): Promise<number> {
+  const { where, nilai } = syaratProduk(f);
+  const b = await queryOne<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM products p LEFT JOIN categories c ON c.id = p.category_id${where}`,
+    nilai,
+  );
+  return Number(b?.n ?? 0);
 }
 
 export async function getAdminProduct(id: number): Promise<AdminProduct | undefined> {
@@ -208,4 +240,56 @@ export async function getDashboardStats() {
     tanpaFoto: Number(s?.tanpaFoto ?? 0),
     totalPesanan: Number(s?.totalPesanan ?? 0),
   };
+}
+
+/* ── Produk unggulan pilihan admin ──────────────────────────────────── */
+
+export type ProdukUnggulan = {
+  id: number;
+  name: string;
+  price: number;
+  firstImage: string | null;
+  inStock: boolean;
+  rank: number;
+};
+
+/** Produk yang sedang diunggulkan, urut sesuai peringkatnya. */
+export async function listUnggulan(): Promise<ProdukUnggulan[]> {
+  const baris = await query<{
+    id: number; name: string; price: number; in_stock: number;
+    firstImage: string | null; featured_rank: number;
+  }>(
+    `SELECT p.id, p.name, p.price, p.in_stock, p.featured_rank,
+            (SELECT i.src FROM product_images i WHERE i.product_id = p.id
+              ORDER BY i.sort_order, i.id LIMIT 1) AS firstImage
+       FROM products p
+      WHERE p.featured_rank IS NOT NULL
+      ORDER BY p.featured_rank, p.name`,
+  );
+  return baris.map((b) => ({
+    id: b.id,
+    name: b.name,
+    price: Number(b.price),
+    firstImage: b.firstImage,
+    inStock: b.in_stock === 1,
+    rank: Number(b.featured_rank),
+  }));
+}
+
+/**
+ * Ganti seluruh daftar unggulan.
+ *
+ * Ditulis ulang total, bukan dibandingkan baris per baris: jumlahnya kecil,
+ * dan cara ini tidak bisa meninggalkan peringkat yatim kalau ada produk yang
+ * dikeluarkan dari daftar.
+ *
+ * Larik kosong berarti kembali ke urutan otomatis di beranda.
+ */
+export async function setUnggulan(ids: number[]): Promise<void> {
+  await transaksi(async (tx) => {
+    await tx.execute(`UPDATE products SET featured_rank = NULL WHERE featured_rank IS NOT NULL`);
+    for (const [n, id] of ids.entries()) {
+      await tx.execute(`UPDATE products SET featured_rank = ? WHERE id = ?`, [n, id]);
+    }
+  });
 }

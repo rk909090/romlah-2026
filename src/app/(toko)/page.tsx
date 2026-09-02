@@ -1,17 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
+import { HeroSlider } from "@/components/hero-slider";
 import { ProductCard } from "@/components/product-card";
 import { WaButton } from "@/components/wa-button";
 import { SITE, TESTIMONIALS } from "@/data/site";
-import {
-  countByCategory,
-  getCategories,
-  getFeatured,
-  getHeroProduct,
-  getPackages,
-  getProducts,
-} from "@/lib/catalog";
+import { getFeatured, getHeroProduct, getPackages, getProducts } from "@/lib/catalog";
 import { berat, rupiah } from "@/lib/format";
+import { getPengaturan } from "@/lib/settings";
 
 const ALASAN = [
   { judul: "Dibuat sendiri", isi: "Diproduksi rumahan di Tanjung Barat, bukan barang reseller." },
@@ -23,17 +18,20 @@ const ALASAN = [
 export const dynamic = "force-dynamic";
 
 export default async function Beranda() {
-  const [semua, unggulan, paket, hero, kategori] = await Promise.all([
+  const [semua, unggulan, paket, hero, set] = await Promise.all([
     getProducts(),
     getFeatured(8),
     getPackages(),
     getHeroProduct(),
-    getCategories(),
+    getPengaturan(),
   ]);
-  const jumlah = countByCategory(semua);
+  const slides = set.slider.aktif ? set.slider.slides : [];
 
   return (
     <>
+      {/* ── Slider ───────────────────────────────────────────── */}
+      {slides.length > 0 && <HeroSlider slides={slides} />}
+
       {/* ── Hero ─────────────────────────────────────────────── */}
       <section className="mx-auto max-w-6xl px-4 pt-8 pb-4 sm:pt-12">
         <div className="grid items-center gap-8 lg:grid-cols-[1.05fr_1fr]">
@@ -65,9 +63,6 @@ export default async function Beranda() {
               </WaButton>
             </div>
 
-            {/* Jam buka sengaja tidak di sini — hero untuk mengajak belanja,
-                jamnya lengkap ada di /toko dan di footer. */}
-            <p className="mt-5 text-xs text-muted">{SITE.outlets[0].name}</p>
           </div>
 
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line bg-sunken lg:aspect-[5/4]">
@@ -85,29 +80,12 @@ export default async function Beranda() {
         </div>
       </section>
 
-      {/* ── Kategori ─────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-8">
-        <div className="rail flex gap-2.5">
-          <Link
-            href="/katalog"
-            className="shrink-0 rounded-full border border-ink bg-ink px-4 py-2 text-sm font-medium text-bg"
-          >
-            Semua · {semua.length}
-          </Link>
-          {kategori.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/katalog?kategori=${c.slug}`}
-              className="shrink-0 rounded-full border border-line bg-surface px-4 py-2 text-sm font-medium text-ink-2 transition hover:border-line-2"
-            >
-              {c.name} · {jumlah[c.slug]}
-            </Link>
-          ))}
-        </div>
-      </section>
+      {/* Chip kategori sengaja tidak ada di beranda: penyaringnya sudah
+          lengkap di /katalog, dan di sini ia cuma menunda orang sampai ke
+          produknya. */}
 
       {/* ── Unggulan ─────────────────────────────────────────── */}
-      <section className="mx-auto max-w-6xl px-4 py-6">
+      <section className="mx-auto max-w-6xl px-4 pt-4 pb-6">
         <div className="mb-5 flex items-end justify-between gap-4">
           <h2 className="font-display text-2xl font-extrabold tracking-tight sm:text-3xl">Sering jadi pilihan</h2>
           <Link href="/katalog" className="shrink-0 text-sm font-medium text-jingga hover:underline">

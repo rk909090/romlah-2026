@@ -153,15 +153,23 @@ function bangunSyarat(f: SaringLead): { where: string; nilai: SqlParam[] } {
   return { where: syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "", nilai };
 }
 
-/** Batas baris yang diambil sekaligus. Hitungannya TIDAK ikut dibatasi ini. */
+/** Batas bawaan kalau pemanggil tidak menyebutkan paging. */
 export const BATAS_DAFTAR_LEAD = 300;
 
-export async function listLeads(f: SaringLead = {}): Promise<Lead[]> {
+export async function listLeads(
+  f: SaringLead = {},
+  paging?: { per: number; lewati: number },
+): Promise<Lead[]> {
   const { where, nilai } = bangunSyarat(f);
+  // LIMIT/OFFSET sebagai angka yang sudah dibulatkan; MariaDB menolak
+  // placeholder di posisi ini pada pernyataan yang disiapkan.
+  const batas = paging
+    ? `LIMIT ${Math.max(1, Math.floor(paging.per))} OFFSET ${Math.max(0, Math.floor(paging.lewati))}`
+    : `LIMIT ${BATAS_DAFTAR_LEAD}`;
   const baris = await query<BarisLead>(
     `SELECT id, customer_id, name, phone, email, message, source, product_slug,
             page_path, status, admin_note, created_at
-       FROM wa_leads${where} ORDER BY created_at DESC LIMIT ${BATAS_DAFTAR_LEAD}`,
+       FROM wa_leads${where} ORDER BY created_at DESC ${batas}`,
     nilai,
   );
   return baris.map(petakan);

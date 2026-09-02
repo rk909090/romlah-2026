@@ -19,6 +19,7 @@ for (const b of fs.readFileSync(path.join(root, ".env.local"), "utf8").split(/\r
 
 const { cariTujuan, hitungOngkir, pakaiContoh } = await import("../src/lib/shipping.ts");
 const { getPengaturan, simpanPengaturan } = await import("../src/lib/settings.ts");
+const { simpanPromoKode, getPromoByCode } = await import("../src/lib/admin/promo.ts");
 const { simpanPesanan, getPesananByNomor, getBarisPesanan } = await import("../src/lib/orders.ts");
 const { query, execute, pool } = await import("../src/lib/db.ts");
 
@@ -35,6 +36,7 @@ async function bersihkan() {
   const o = await query(`SELECT id FROM orders WHERE customer_phone = ?`, [BAKU]);
   for (const r of o) await execute(`DELETE FROM orders WHERE id = ?`, [r.id]);
   await execute(`DELETE FROM customers WHERE phone = ?`, [BAKU]);
+  await execute(`DELETE FROM promo_codes WHERE code = 'UJI-INTEGRASI-PROMO'`);
 }
 
 // Pengaturan asli disalin supaya bisa dikembalikan persis, apa pun yang
@@ -159,6 +161,72 @@ try {
   });
   cek("program mati: ongkir penuh lagi", mati.shippingCost === ongkirSatu,
     `${mati.shippingCost} vs ${ongkirSatu}`);
+
+  /* ── Kode promo pada pesanan sungguhan ─────────────────────────── */
+  // Program gratis ongkir dimatikan lebih dulu supaya potongan promo yang
+  // sedang diuji tidak tertutup oleh ongkir yang sudah nol.
+  await simpanPengaturan("gratisOngkir", { aktif: false, minBelanja: 0, maksPotongan: 0, pesan: "" });
+
+  await simpanPromoKode(null, {
+    code: "UJI-INTEGRASI-PROMO", description: "uji", jenis: "nominal", nilai: 15000,
+    minBelanja: 0, maksPotongan: 0, kuota: 1, kuotaPerOrang: null,
+    mulai: null, berakhir: null, isActive: true,
+  });
+
+  const denganPromo = await simpanPesanan({
+    items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
+    alamat: "Jl. Uji Integrasi No. 1", tujuan,
+    kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+    kodePromo: "uji-integrasi-promo",
+  });
+
+  cek("kode promo tersimpan dalam huruf besar",
+    denganPromo.promoCode === "UJI-INTEGRASI-PROMO", String(denganPromo.promoCode));
+  cek("potongan tersimpan", denganPromo.discount === 15000, String(denganPromo.discount));
+  cek("total = subtotal + ongkir - potongan",
+    denganPromo.total === denganPromo.subtotal + denganPromo.shippingCost - denganPromo.discount,
+    `${denganPromo.total} vs ${denganPromo.subtotal} + ${denganPromo.shippingCost} - ${denganPromo.discount}`);
+
+  const dbPromo = await getPesananByNomor(denganPromo.orderNumber);
+  cek("potongan tercatat di basis data", Number(dbPromo?.discount) === 15000);
+  cek("kuota promo ikut naik",
+    Number((await getPromoByCode("UJI-INTEGRASI-PROMO")).terpakai) === 1);
+
+  // Rincian yang dikirim ke Midtrans harus berjumlah PERSIS sama dengan
+  // gross_amount, kalau tidak transaksinya ditolak. Diperiksa dengan
+  // susunan yang sama seperti di bayarSekarang(): barang, ongkir, lalu satu
+  // baris potongan berharga negatif.
+  const rincian = denganPromo.items.map((i) => i.unitPrice * i.qty);
+  if (denganPromo.shippingCost > 0) rincian.push(denganPromo.shippingCost);
+  if (denganPromo.discount > 0) rincian.push(-denganPromo.discount);
+  cek("rincian Midtrans berjumlah sama dengan total",
+    rincian.reduce((a, b) => a + b, 0) === denganPromo.total,
+    `${rincian.join(" + ")} = ${denganPromo.total}`);
+
+  // Kuota 1 sudah terpakai: pesanan kedua dengan kode yang sama harus gagal.
+  try {
+    await simpanPesanan({
+      items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
+      alamat: "Jl. Uji Integrasi No. 1", tujuan,
+      kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+      kodePromo: "UJI-INTEGRASI-PROMO",
+    });
+    cek("kode berkuota habis ditolak pada pesanan kedua", false, "justru tersimpan");
+  } catch (e) {
+    cek("kode berkuota habis ditolak pada pesanan kedua", true, e.message.slice(0, 45));
+  }
+
+  try {
+    await simpanPesanan({
+      items: [{ slug: produk[0].slug, qty: 1 }], nama: "Penguji Integrasi", telepon: TEL,
+      alamat: "Jl. Uji Integrasi No. 1", tujuan,
+      kurirKode: dipilih.code, kurirLayanan: dipilih.service,
+      kodePromo: "KODE-YANG-TIDAK-PERNAH-ADA",
+    });
+    cek("kode ngawur ditolak", false, "justru tersimpan");
+  } catch (e) {
+    cek("kode ngawur ditolak", true, e.message.slice(0, 40));
+  }
 
   // Layanan yang tidak ada dalam jawaban Biteship harus ditolak.
   try {

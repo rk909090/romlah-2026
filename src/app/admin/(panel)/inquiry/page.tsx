@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
 import { DateFilter } from "@/components/admin/date-filter";
+import { bacaHalaman, Pagination } from "@/components/admin/pagination";
 import { LeadForm } from "@/components/admin/lead-form";
 import { IkonWa } from "@/components/wa-button";
 import { tampilkanTelepon } from "@/lib/admin/customers";
@@ -32,20 +33,27 @@ function Chip({ aktif, href, children }: { aktif: boolean; href: string; childre
 export default async function Inquiry({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string; rentang?: string; dari?: string; sampai?: string }>;
+  searchParams: Promise<{
+    q?: string; status?: string; rentang?: string;
+    dari?: string; sampai?: string; hal?: string; per?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const r = bacaRentang(sp);
 
   // Saringan yang sama persis dipakai daftar dan ringkasan angkanya.
   const saring = { q: sp.q, status: sp.status, mulaiUtc: r.mulaiUtc, sebelumUtc: r.sebelumUtc };
-  const [leads, hitung] = await Promise.all([listLeads(saring), hitungLeadRentang(saring)]);
+  const hitung = await hitungLeadRentang(saring);
+  const h = bacaHalaman(sp, hitung.total);
+  const leads = await listLeads(saring, { per: h.per, lewati: h.lewati });
 
   const adaSaringan = r.aktif || Boolean(sp.q) || Boolean(sp.status);
 
   const qs = (patch: Record<string, string | undefined>) => {
+    // `hal` sengaja tidak dibawa: mengganti status harus memulai dari
+    // halaman 1, kalau tidak hasilnya bisa mendarat di halaman kosong.
     const next = {
-      q: sp.q, status: sp.status,
+      q: sp.q, status: sp.status, per: sp.per,
       rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai,
       ...patch,
     };
@@ -83,6 +91,7 @@ export default async function Inquiry({
         {sp.rentang && <input type="hidden" name="rentang" value={sp.rentang} />}
         {sp.dari && <input type="hidden" name="dari" value={sp.dari} />}
         {sp.sampai && <input type="hidden" name="sampai" value={sp.sampai} />}
+        {sp.per && <input type="hidden" name="per" value={sp.per} />}
         <input
           name="q"
           defaultValue={sp.q ?? ""}
@@ -195,11 +204,16 @@ export default async function Inquiry({
         </ul>
       )}
 
-      {hitung.total > leads.length && (
-        <p className="mt-3 text-center text-xs text-muted">
-          Menampilkan {leads.length} terbaru dari {hitung.total} prospek. Persempit periodenya untuk
-          melihat sisanya.
-        </p>
+      {hitung.total > 0 && (
+        <Pagination
+          basePath="/admin/inquiry"
+          h={h}
+          lain={{
+            q: sp.q, status: sp.status, per: sp.per,
+            rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai,
+          }}
+          satuan="prospek"
+        />
       )}
     </>
   );

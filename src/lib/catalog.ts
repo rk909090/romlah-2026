@@ -127,15 +127,28 @@ export async function getPackages(): Promise<Product[]> {
 /**
  * Produk unggulan untuk beranda.
  *
- * Belum ada data penjualan, jadi urutannya belum bisa berdasarkan "paling
- * laris". Sementara ini: produk tersedia di luar kategori paket, diurutkan
- * berdasarkan kelengkapan foto — yang tampil adalah yang paling siap dipajang.
+ * Pilihan admin di /admin/marketing/unggulan menang. Kalau belum ada yang
+ * dipilih, dipakai urutan otomatis lama: produk tersedia di luar kategori
+ * paket, diurutkan berdasarkan kelengkapan foto — yang paling siap dipajang.
+ *
+ * Cadangan itu sengaja dipertahankan, bukan diganti daftar kosong: beranda
+ * tanpa produk sama sekali jauh lebih buruk daripada urutan yang tidak
+ * dipilih tangan.
  */
 export async function getFeatured(limit = 6): Promise<Product[]> {
+  const n = Number(limit) || 6;
+
+  const dipilih = await query<BarisProduk>(
+    `${PILIH} AND p.in_stock = 1 AND p.featured_rank IS NOT NULL
+      ORDER BY p.featured_rank, p.name
+      LIMIT ${n}`,
+  );
+  if (dipilih.length > 0) return lengkapi(dipilih);
+
   const baris = await query<BarisProduk>(
     `${PILIH} AND p.in_stock = 1 AND (c.slug IS NULL OR c.slug <> 'paket')
       ORDER BY (SELECT COUNT(*) FROM product_images i WHERE i.product_id = p.id) DESC, p.name
-      LIMIT ${Number(limit) || 6}`,
+      LIMIT ${n}`,
   );
   return lengkapi(baris);
 }

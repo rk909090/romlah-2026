@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { WaButton } from "@/components/wa-button";
+import { SetWaKonteks } from "@/components/wa-konteks";
 import { berat, rupiah } from "@/lib/format";
 import { labelStatus, LABEL_STATUS, STATUS_URUT } from "@/lib/order-status";
 import { getBarisPesanan, getPesananByNomor } from "@/lib/orders";
@@ -87,6 +88,12 @@ export default async function StatusPesanan({ params }: { params: Promise<{ nomo
           <dd className="tabular text-right">
             {Number(pesanan.shipping_cost) === 0 ? "Gratis" : rupiah(Number(pesanan.shipping_cost))}
           </dd>
+          {Number(pesanan.discount) > 0 && (
+            <>
+              <dt className="text-pandan">Promo {pesanan.promo_code}</dt>
+              <dd className="tabular text-right text-pandan">-{rupiah(Number(pesanan.discount))}</dd>
+            </>
+          )}
           <dt className="border-t border-line pt-2 font-bold">Total</dt>
           <dd className="tabular border-t border-line pt-2 text-right font-bold">
             {rupiah(Number(pesanan.total))}
@@ -102,6 +109,10 @@ export default async function StatusPesanan({ params }: { params: Promise<{ nomo
         {pesanan.destination_label && <p className="text-ink-2">{pesanan.destination_label}</p>}
       </div>
 
+      <SetWaKonteks
+        pesan={`Halo Romlah, saya mau tanya soal pesanan ${pesanan.order_number}`}
+        sumber="pesanan"
+      />
       <WaButton
         pesan={`Halo Romlah, saya mau tanya soal pesanan ${pesanan.order_number}`}
         sumber="pesanan"

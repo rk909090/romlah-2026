@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
 import { listPaket, listStatusKategori } from "@/lib/admin/packages";
+import { listPromo } from "@/lib/admin/promo";
+import { listUnggulan } from "@/lib/admin/products";
 import { rupiah } from "@/lib/format";
 import { getPengaturan } from "@/lib/settings";
 import { midtransAktif } from "@/lib/midtrans";
@@ -43,11 +45,22 @@ function Ikon({ d }: { d: string }) {
 }
 
 export default async function Marketing() {
-  const [kategori, paket, set] = await Promise.all([
+  const [kategori, paket, set, promo, unggulan] = await Promise.all([
     listStatusKategori(),
     listPaket(),
     getPengaturan(),
+    listPromo(),
+    listUnggulan(),
   ]);
+
+  const kini = new Date();
+  const promoJalan = promo.filter(
+    (p) =>
+      p.isActive &&
+      (p.mulai === null || new Date(p.mulai) <= kini) &&
+      (p.berakhir === null || new Date(p.berakhir) >= kini) &&
+      (p.kuota === null || p.terpakai < p.kuota),
+  ).length;
 
   const paketNyala = kategori.find((k) => k.slug === "paket")?.isActive ?? false;
   const paketTayang = paket.filter((p) => p.isActive).length;
@@ -87,6 +100,39 @@ export default async function Marketing() {
         nyala: set.checkout.tombolWa,
       },
       d: "M6 7h12l-1 12H7L6 7Zm3.5 0a2.5 2.5 0 0 1 5 0",
+    },
+    {
+      href: "/admin/marketing/promo",
+      judul: "Kode promo",
+      ringkas:
+        promo.length === 0
+          ? "Belum ada kode dibuat"
+          : `${promoJalan} dari ${promo.length} kode sedang berjalan`,
+      status: { teks: promoJalan > 0 ? `${promoJalan} jalan` : "Tidak ada", nyala: promoJalan > 0 },
+      d: "M15 5 5 15m0-6.5A1.5 1.5 0 1 1 6.5 7 1.5 1.5 0 0 1 5 8.5Zm10 7a1.5 1.5 0 1 1 1.5-1.5 1.5 1.5 0 0 1-1.5 1.5ZM3 7.5v-3a1 1 0 0 1 1-1h3l2-2 2 2h3a1 1 0 0 1 1 1",
+    },
+    {
+      href: "/admin/marketing/slider",
+      judul: "Slider beranda",
+      ringkas:
+        set.slider.slides.length === 0
+          ? "Belum ada slide"
+          : `${set.slider.slides.length} slide tersusun`,
+      status: {
+        teks: set.slider.aktif && set.slider.slides.length > 0 ? "Tayang" : "Mati",
+        nyala: set.slider.aktif && set.slider.slides.length > 0,
+      },
+      d: "M3 6.5h18v11H3v-11Zm3-2.5h12M7.5 20h9",
+    },
+    {
+      href: "/admin/marketing/unggulan",
+      judul: "Produk unggulan",
+      ringkas:
+        unggulan.length === 0
+          ? "Beranda memakai urutan otomatis"
+          : `${unggulan.length} produk dipilih tangan`,
+      status: { teks: unggulan.length > 0 ? "Dipilih" : "Otomatis", nyala: unggulan.length > 0 },
+      d: "m12 4 2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L4.2 9.7l5.4-.8L12 4Z",
     },
     {
       href: "/admin/marketing/banner",

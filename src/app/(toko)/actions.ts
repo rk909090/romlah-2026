@@ -5,6 +5,9 @@ import { rupiah } from "@/lib/format";
 import { execute } from "@/lib/db";
 import { buatTransaksiSnap, midtransAktif, MidtransError } from "@/lib/midtrans";
 import { simpanPesanan, type PesananMasuk, type PesananTersimpan } from "@/lib/orders";
+import { normalkanTelepon } from "@/lib/admin/customers";
+import { periksaPromo } from "@/lib/admin/promo";
+import { ringkasPromo } from "@/lib/promo-kode";
 
 export type HasilPesanan =
   | { ok: true; pesanan: PesananTersimpan; pesan: string; tautanWa: string }
@@ -37,6 +40,9 @@ function susunPesan(p: PesananTersimpan, nama: string, telepon: string, alamat: 
     "",
     `Subtotal: ${rupiah(p.subtotal)}`,
     `Pengiriman: ${kirim}`,
+    // Baris promo hanya muncul kalau memang ada, supaya pesannya tidak
+    // penuh baris kosong untuk pesanan biasa.
+    ...(p.promoCode ? [`Promo ${p.promoCode}: −${rupiah(p.discount)}`] : []),
     `Total: ${rupiah(p.total)}`,
     "",
     "Kirim ke:",
@@ -104,6 +110,17 @@ export async function bayarSekarang(masuk: PesananMasuk): Promise<HasilBayar> {
       quantity: 1,
     });
   }
+  // Potongan promo dikirim sebagai satu baris berharga NEGATIF. Midtrans
+  // menolak transaksi bila jumlah item_details tidak sama persis dengan
+  // gross_amount, dan inilah cara baku menyatakan diskon di Snap.
+  if (pesanan.discount > 0) {
+    items.push({
+      id: "diskon",
+      name: `Promo ${pesanan.promoCode ?? ""}`.trim().slice(0, 50),
+      price: -pesanan.discount,
+      quantity: 1,
+    });
+  }
 
   try {
     const { redirectUrl } = await buatTransaksiSnap({
@@ -131,5 +148,59 @@ export async function bayarSekarang(masuk: PesananMasuk): Promise<HasilBayar> {
         ? `${e.message} Pesanan Anda tetap tersimpan dengan nomor ${pesanan.orderNumber}.`
         : `Pembayaran gagal dimulai. Pesanan Anda tersimpan dengan nomor ${pesanan.orderNumber}.`;
     return { ok: false, error: pesan };
+  }
+}
+
+/* ── Periksa kode promo dari halaman keranjang ─────────────────────── */
+export type HasilCekPromo =
+  | { ok: true; kode: string; diskonBarang: number; diskonOngkir: number; total: number; ringkas: string }
+  | { ok: false; error: string };
+
+/**
+ * Periksa kode promo tanpa menebusnya.
+ *
+ * Sengaja tidak menaikkan kuota: pembeli boleh mencoba beberapa kode tanpa
+ * menghabiskan jatah orang lain. Penebusan baru terjadi saat pesanannya
+ * benar-benar disimpan, di dalam transaksi yang sama.
+ *
+ * Subtotal dan ongkir yang dikirim klien hanya dipakai untuk MENAMPILKAN
+ * perkiraan. Angka yang mengikat dihitung ulang dari basis data saat pesanan
+ * disimpan, jadi memalsukannya di sini tidak menghasilkan potongan apa pun.
+ */
+export async function cekPromo(
+  kode: string,
+  subtotal: number,
+  ongkir: number,
+  telepon?: string,
+): Promise<HasilCekPromo> {
+  try {
+    if (!kode.trim()) return { ok: false, error: "Kode promo masih kosong." };
+
+    const aman = (n: unknown) => (Number.isFinite(Number(n)) && Number(n) >= 0 ? Math.round(Number(n)) : 0);
+    const p = await periksaPromo(
+      kode,
+      aman(subtotal),
+      aman(ongkir),
+      telepon?.trim() ? normalkanTelepon(telepon) : undefined,
+    );
+    if (!p.ok) return { ok: false, error: p.alasan };
+
+    return {
+      ok: true,
+      kode: p.promo.code,
+      diskonBarang: p.hasil.diskonBarang,
+      diskonOngkir: p.hasil.diskonOngkir,
+      total: p.hasil.total,
+      ringkas: ringkasPromo({
+        code: p.promo.code,
+        jenis: p.promo.jenis,
+        nilai: p.promo.nilai,
+        minBelanja: p.promo.minBelanja,
+        maksPotongan: p.promo.maksPotongan,
+      }),
+    };
+  } catch (e) {
+    console.error("[cekPromo]", e);
+    return { ok: false, error: "Kode promo gagal diperiksa. Coba lagi sebentar lagi." };
   }
 }

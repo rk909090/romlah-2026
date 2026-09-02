@@ -100,6 +100,13 @@ export function WaButton({
     } catch {
       // Penyimpanan diblokir — formulirnya cuma mulai kosong.
     }
+
+    // Isi pertanyaan disegarkan dari prop SETIAP kali panel dibuka.
+    // useState(pesan) hanya berlaku saat komponen pertama dipasang, sedangkan
+    // tombol yang menempel di layar hidup terus selama berpindah halaman —
+    // tanpa baris ini, tombol mengambang di halaman produk masih menanyakan
+    // "oleh-oleh" secara umum, bukan produk yang sedang dibuka.
+    setIsi(pesan);
     setBuka(true);
   }
 

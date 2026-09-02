@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
-import { listCustomers, tampilkanTelepon } from "@/lib/admin/customers";
+import { bacaHalaman, Pagination } from "@/components/admin/pagination";
+import { countCustomersCocok, listCustomers, tampilkanTelepon } from "@/lib/admin/customers";
 import { rupiah } from "@/lib/format";
 
 export const metadata = { title: "Pelanggan" };
@@ -9,10 +10,14 @@ export const dynamic = "force-dynamic";
 export default async function Pelanggan({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; hal?: string; per?: string }>;
 }) {
-  const { q } = await searchParams;
-  const pelanggan = await listCustomers(q);
+  const sp = await searchParams;
+  const q = sp.q;
+
+  const total = await countCustomersCocok(q);
+  const h = bacaHalaman(sp, total);
+  const pelanggan = await listCustomers(q, { per: h.per, lewati: h.lewati });
 
   return (
     <>
@@ -22,6 +27,7 @@ export default async function Pelanggan({
       />
 
       <form method="get" className="mb-4">
+        {sp.per && <input type="hidden" name="per" value={sp.per} />}
         <input
           name="q"
           defaultValue={q ?? ""}
@@ -97,6 +103,15 @@ export default async function Pelanggan({
             </table>
           </div>
         </div>
+      )}
+
+      {total > 0 && (
+        <Pagination
+          basePath="/admin/pelanggan"
+          h={h}
+          lain={{ q: sp.q, per: sp.per }}
+          satuan="pelanggan"
+        />
       )}
     </>
   );

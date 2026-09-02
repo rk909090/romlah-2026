@@ -29,6 +29,10 @@ import {
 } from "@/lib/admin/packages";
 import { STATUS_LEAD, ubahStatusLead, type StatusLead } from "@/lib/leads";
 import { simpanPengaturan } from "@/lib/settings";
+import { MAKS_SLIDE, tautanAman, type Slide } from "@/lib/promo";
+import { hapusPromoKode, jenisSah, simpanPromoKode } from "@/lib/admin/promo";
+import { normalkanKode } from "@/lib/promo-kode";
+import { setUnggulan } from "@/lib/admin/products";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -467,4 +471,189 @@ export async function simpanBanner(_prev: FormState, formData: FormData): Promis
   revalidatePath("/", "layout");
   revalidatePath("/admin/marketing/banner");
   return { ok: "Banner disimpan." };
+}
+
+/* ── Marketing: kode promo ─────────────────────────────────────────── */
+
+/**
+ * Ubah nilai <input type="datetime-local"> (yang diketik dalam WIB) menjadi
+ * "YYYY-MM-DD HH:MM:SS" UTC, karena kolom DATETIME-nya tersimpan dalam UTC.
+ */
+function waktuWibKeUtc(mentah: string): string | null {
+  const s = mentah.trim();
+  if (!s) return null;
+  const d = new Date(`${s}:00+07:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 19).replace("T", " ");
+}
+
+/** Angka opsional: kosong berarti "tanpa batas", bukan 0. */
+function angkaOpsional(formData: FormData, nama: string): number | null | "galat" {
+  const mentah = String(formData.get(nama) ?? "").trim();
+  if (mentah === "") return null;
+  const n = Number(mentah);
+  if (!Number.isFinite(n) || n < 0) return "galat";
+  return Math.round(n);
+}
+
+export async function simpanPromoAksi(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const code = normalkanKode(String(formData.get("code") ?? ""));
+  if (!code) return { error: "Kode promo wajib diisi." };
+  if (!/^[A-Z0-9-]{3,40}$/.test(code)) {
+    return { error: "Kode hanya boleh huruf, angka, dan tanda hubung, minimal 3 karakter." };
+  }
+
+  const jenis = String(formData.get("jenis") ?? "");
+  if (!jenisSah(jenis)) return { error: "Jenis potongan tidak dikenal." };
+
+  const nilai = angka(formData, "nilai");
+  const minBelanja = angka(formData, "minBelanja");
+  const maksPotongan = angka(formData, "maksPotongan");
+  if (nilai === null || minBelanja === null || maksPotongan === null) {
+    return { error: "Angka potongan, minimal belanja, dan batas harus tidak negatif." };
+  }
+  if (jenis === "persen" && (nilai < 1 || nilai > 100)) {
+    return { error: "Potongan persen harus antara 1 dan 100." };
+  }
+  // Persen tanpa batas adalah cara tercepat kehilangan uang pada satu
+  // pesanan besar; dimintakan tegas, bukan diam-diam dibiarkan.
+  if (jenis === "persen" && maksPotongan === 0) {
+    return { error: "Potongan persen wajib punya batas potongan, supaya satu pesanan besar tidak menghabiskan margin." };
+  }
+  if (jenis !== "ongkir" && nilai === 0) {
+    return { error: "Besar potongan tidak boleh 0 untuk jenis ini." };
+  }
+
+  const kuota = angkaOpsional(formData, "kuota");
+  const kuotaPerOrang = angkaOpsional(formData, "kuotaPerOrang");
+  if (kuota === "galat" || kuotaPerOrang === "galat") {
+    return { error: "Kuota harus angka tidak negatif, atau dikosongkan." };
+  }
+
+  const mulai = waktuWibKeUtc(String(formData.get("mulai") ?? ""));
+  const berakhir = waktuWibKeUtc(String(formData.get("berakhir") ?? ""));
+  if (mulai && berakhir && mulai > berakhir) {
+    return { error: "Tanggal mulai ada setelah tanggal berakhir." };
+  }
+
+  const idMentah = formData.get("id");
+  const id = idMentah ? Number(idMentah) : null;
+
+  try {
+    await simpanPromoKode(id, {
+      code,
+      description: String(formData.get("description") ?? "").trim(),
+      jenis,
+      nilai,
+      minBelanja,
+      maksPotongan,
+      kuota,
+      kuotaPerOrang,
+      mulai,
+      berakhir,
+      isActive: formData.get("isActive") === "on",
+    });
+  } catch (e) {
+    if (e && typeof e === "object" && "code" in e && e.code === DUPLIKAT) {
+      return { error: `Kode "${code}" sudah dipakai promo lain.` };
+    }
+    throw e;
+  }
+
+  revalidatePath("/admin/marketing/promo");
+  redirect("/admin/marketing/promo");
+}
+
+export async function hapusPromoAksi(formData: FormData): Promise<void> {
+  if (!(await getCurrentUser())) redirect("/admin/login");
+  const id = Number(formData.get("id"));
+  if (!Number.isInteger(id)) return;
+  await hapusPromoKode(id);
+  revalidatePath("/admin/marketing/promo");
+}
+
+/* ── Marketing: produk unggulan ────────────────────────────────────── */
+export async function simpanUnggulan(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  // Urutannya dikirim sebagai satu larik id; indeksnya jadi peringkatnya.
+  const ids = formData
+    .getAll("unggulan")
+    .map((v) => Number(v))
+    .filter((n) => Number.isInteger(n) && n > 0);
+
+  if (new Set(ids).size !== ids.length) {
+    return { error: "Ada produk yang terdaftar dua kali." };
+  }
+  if (ids.length > 12) {
+    return { error: "Maksimal 12 produk unggulan — beranda hanya menampilkan 8." };
+  }
+
+  await setUnggulan(ids);
+
+  revalidatePath("/admin/marketing/unggulan");
+  revalidatePath("/");
+  return { ok: ids.length === 0
+    ? "Pilihan dikosongkan. Beranda kembali memakai urutan otomatis."
+    : `${ids.length} produk unggulan disimpan.` };
+}
+
+/* ── Marketing: slider beranda ─────────────────────────────────────── */
+export async function simpanSlider(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  // Tiap bidang dikirim sebagai larik sejajar; indeksnya yang memasangkan
+  // satu slide utuh.
+  const ambil = (n: string) => formData.getAll(n).map((v) => String(v));
+  const gambar = ambil("gambar");
+  const alt = ambil("alt");
+  const judul = ambil("judul");
+  const teks = ambil("teks");
+  const tautan = ambil("tautan");
+  const tombol = ambil("tombol");
+
+  if (
+    [alt, judul, teks, tautan, tombol].some((a) => a.length !== gambar.length)
+  ) {
+    return { error: "Data slide tidak terbaca dengan benar. Muat ulang halamannya." };
+  }
+  if (gambar.length > MAKS_SLIDE) return { error: `Maksimal ${MAKS_SLIDE} slide.` };
+
+  const slides: Slide[] = [];
+  for (let i = 0; i < gambar.length; i++) {
+    const g = gambar[i].trim();
+    if (!g) return { error: `Slide ${i + 1} belum ada alamat gambarnya.` };
+    if (!tautanAman(g)) {
+      return { error: `Alamat gambar slide ${i + 1} harus diawali / atau http:// maupun https://.` };
+    }
+    const t = tautan[i].trim();
+    if (t && !tautanAman(t)) {
+      return { error: `Tautan slide ${i + 1} harus diawali / atau http:// maupun https://.` };
+    }
+    if (!alt[i].trim()) {
+      return { error: `Slide ${i + 1} belum ada teks pengganti gambarnya.` };
+    }
+    slides.push({
+      gambar: g,
+      alt: alt[i].trim().slice(0, 200),
+      judul: judul[i].trim().slice(0, 120),
+      teks: teks[i].trim().slice(0, 200),
+      tautan: t,
+      tombol: tombol[i].trim().slice(0, 40),
+    });
+  }
+
+  const aktif = formData.get("aktif") === "on";
+  await simpanPengaturan("slider", { aktif, slides });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/marketing/slider");
+  return {
+    ok:
+      aktif && slides.length === 0
+        ? "Tersimpan, tapi slidernya masih kosong sehingga belum tampil di beranda."
+        : `Slider disimpan (${slides.length} slide).`,
+  };
 }

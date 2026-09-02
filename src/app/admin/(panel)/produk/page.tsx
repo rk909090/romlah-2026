@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
+import { bacaHalaman, Pagination } from "@/components/admin/pagination";
 import { ubahArsip } from "@/app/admin/actions";
-import { listCategories, listProducts } from "@/lib/admin/products";
+import { countProducts, listCategories, listProducts } from "@/lib/admin/products";
 import { berat, rupiah } from "@/lib/format";
 
 export const metadata = { title: "Produk" };
+export const dynamic = "force-dynamic";
 
 const STATUS = [
   { key: "", label: "Semua" },
@@ -24,23 +26,29 @@ function tautan(sp: Record<string, string | undefined>, patch: Record<string, st
 export default async function DaftarProduk({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; kategori?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; kategori?: string; status?: string; hal?: string; per?: string }>;
 }) {
   const sp = await searchParams;
   const status = (["aktif", "arsip", "habis"] as const).find((s) => s === sp.status);
+  const saring = { q: sp.q, kategori: sp.kategori, status };
+
+  // Total dihitung lebih dulu supaya halaman yang melampaui data — misalnya
+  // setelah tapisannya dipersempit — dibawa turun ke halaman terakhir.
+  const total = await countProducts(saring);
+  const h = bacaHalaman(sp, total);
 
   const [produk, kategori] = await Promise.all([
-    listProducts({ q: sp.q, kategori: sp.kategori, status }),
+    listProducts(saring, { per: h.per, lewati: h.lewati }),
     listCategories(),
   ]);
 
-  const kini = { q: sp.q, kategori: sp.kategori, status: sp.status };
+  const kini = { q: sp.q, kategori: sp.kategori, status: sp.status, per: sp.per };
 
   return (
     <>
       <AdminHeading
         title="Produk"
-        description={`${produk.length} produk cocok dengan tapisan saat ini.`}
+        description={`${total} produk cocok dengan tapisan saat ini.`}
         action={
           <Link
             href="/admin/produk/baru"
@@ -56,6 +64,7 @@ export default async function DaftarProduk({
         <form method="get" className="flex-1">
           {sp.kategori && <input type="hidden" name="kategori" value={sp.kategori} />}
           {sp.status && <input type="hidden" name="status" value={sp.status} />}
+          {sp.per && <input type="hidden" name="per" value={sp.per} />}
           <input
             name="q"
             defaultValue={sp.q ?? ""}
@@ -187,6 +196,8 @@ export default async function DaftarProduk({
           </div>
         )}
       </div>
+
+      <Pagination basePath="/admin/produk" h={h} lain={kini} satuan="produk" />
     </>
   );
 }

@@ -287,3 +287,51 @@ CREATE TABLE IF NOT EXISTS settings (
                           ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Kode promo ────────────────────────────────────────────────────────
+-- Kuota dijaga lewat kolom `terpakai` yang dinaikkan DI DALAM transaksi
+-- penyimpanan pesanan dengan UPDATE bersyarat, bukan lewat COUNT terpisah:
+-- dua pembeli yang menebus kode terakhir pada detik yang sama harus membuat
+-- salah satunya gagal, dan itu hanya terjamin kalau pemeriksaannya menyatu
+-- dengan penulisannya.
+CREATE TABLE IF NOT EXISTS promo_codes (
+  id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  -- Selalu disimpan huruf besar; pembeli boleh mengetik huruf kecil.
+  code          VARCHAR(40)   NOT NULL,
+  description   VARCHAR(255)  NULL,
+  -- persen  : potongan sekian persen dari subtotal barang
+  -- nominal : potongan sekian rupiah dari subtotal barang
+  -- ongkir  : potongan sekian rupiah dari ongkir yang tersisa
+  jenis         ENUM('persen','nominal','ongkir') NOT NULL DEFAULT 'nominal',
+  nilai         INT UNSIGNED  NOT NULL DEFAULT 0,
+  min_belanja   INT UNSIGNED  NOT NULL DEFAULT 0,
+  -- 0 = tanpa batas. Wajib diisi untuk jenis persen kalau tidak mau kaget.
+  maks_potongan INT UNSIGNED  NOT NULL DEFAULT 0,
+  -- NULL = tanpa batas pemakaian.
+  kuota         INT UNSIGNED  NULL,
+  terpakai      INT UNSIGNED  NOT NULL DEFAULT 0,
+  -- NULL = satu pelanggan boleh memakai berapa kali pun.
+  kuota_per_orang INT UNSIGNED NULL,
+  mulai         DATETIME      NULL,
+  berakhir      DATETIME      NULL,
+  is_active     TINYINT(1)    NOT NULL DEFAULT 1,
+  created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP
+                              ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_promo_codes_code (code),
+  KEY idx_promo_codes_aktif (is_active, berakhir)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Kode yang dipakai pesanan DISALIN, bukan ditunjuk lewat kunci asing:
+-- nota lama tidak boleh berubah kalau kodenya kelak dihapus atau diubah.
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS promo_code VARCHAR(40) NULL AFTER shipping_cost;
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS discount INT UNSIGNED NOT NULL DEFAULT 0 AFTER promo_code;
+ALTER TABLE orders ADD KEY IF NOT EXISTS idx_orders_promo (promo_code);
+
+-- ── Produk unggulan pilihan admin ─────────────────────────────────────
+-- NULL = tidak diunggulkan. Angka kecil tampil lebih dulu. Sebelum ini
+-- beranda mengurutkan berdasarkan kelengkapan foto, yang tidak ada
+-- hubungannya dengan apa yang ingin dijual.
+ALTER TABLE products ADD COLUMN IF NOT EXISTS featured_rank INT UNSIGNED NULL;
+ALTER TABLE products ADD KEY IF NOT EXISTS idx_products_unggulan (featured_rank);

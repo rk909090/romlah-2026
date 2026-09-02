@@ -73,6 +73,12 @@ export default async function DetailPesanan({ params }: Props) {
               <dd className="tabular text-right">
                 {Number(pesanan.shipping_cost) === 0 ? "Gratis" : rupiah(Number(pesanan.shipping_cost))}
               </dd>
+              {Number(pesanan.discount) > 0 && (
+                <>
+                  <dt className="text-pandan">Promo {pesanan.promo_code}</dt>
+                  <dd className="tabular text-right text-pandan">-{rupiah(Number(pesanan.discount))}</dd>
+                </>
+              )}
               <dt className="border-t border-line pt-2 font-bold">Total</dt>
               <dd className="tabular border-t border-line pt-2 text-right font-bold">
                 {rupiah(Number(pesanan.total))}
