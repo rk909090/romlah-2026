@@ -28,6 +28,7 @@ import {
   type InputPaket,
 } from "@/lib/admin/packages";
 import { STATUS_LEAD, ubahStatusLead, type StatusLead } from "@/lib/leads";
+import { simpanPengaturan } from "@/lib/settings";
 
 export type FormState = { error?: string; ok?: string };
 
@@ -392,4 +393,78 @@ export async function hapusPaketAksi(formData: FormData): Promise<void> {
   revalidatePath("/admin/marketing");
   revalidatePath("/katalog");
   revalidatePath("/");
+}
+
+/* ── Marketing: pengaturan ─────────────────────────────────────────── */
+
+/** Baca angka rupiah dari formulir; kosong dianggap 0, bukan NaN. */
+function angka(formData: FormData, nama: string): number | null {
+  const mentah = String(formData.get(nama) ?? "").trim();
+  if (mentah === "") return 0;
+  const n = Number(mentah);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n);
+}
+
+export async function simpanGratisOngkir(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const minBelanja = angka(formData, "minBelanja");
+  const maksPotongan = angka(formData, "maksPotongan");
+  if (minBelanja === null) return { error: "Minimal belanja harus angka tidak negatif." };
+  if (maksPotongan === null) return { error: "Batas potongan harus angka tidak negatif." };
+
+  const aktif = formData.get("aktif") === "on";
+  // Minimal belanja 0 berarti seluruh pesanan gratis ongkir. Itu sah, tapi
+  // hampir selalu bukan yang dimaksud, jadi diminta ditegaskan.
+  if (aktif && minBelanja === 0 && formData.get("sadarGratisSemua") !== "on") {
+    return {
+      error:
+        "Minimal belanja 0 berarti SEMUA pesanan gratis ongkir. Centang penegasannya kalau memang itu yang diinginkan.",
+    };
+  }
+
+  await simpanPengaturan("gratisOngkir", {
+    aktif,
+    minBelanja,
+    maksPotongan,
+    pesan: String(formData.get("pesan") ?? "").trim().slice(0, 200),
+  });
+
+  // Seluruh halaman toko ikut disegarkan: keranjang, beranda, dan panel mini
+  // sama-sama menampilkan ambangnya.
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/marketing/ongkir");
+  return { ok: "Pengaturan gratis ongkir disimpan." };
+}
+
+export async function simpanCheckout(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  await simpanPengaturan("checkout", { tombolWa: formData.get("tombolWa") === "on" });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/marketing/checkout");
+  return { ok: "Pengaturan checkout disimpan." };
+}
+
+export async function simpanBanner(_prev: FormState, formData: FormData): Promise<FormState> {
+  if (!(await getCurrentUser())) return { error: "Sesi berakhir. Silakan masuk lagi." };
+
+  const teks = String(formData.get("teks") ?? "").trim().slice(0, 200);
+  const tautan = String(formData.get("tautan") ?? "").trim().slice(0, 255);
+  const aktif = formData.get("aktif") === "on";
+
+  if (aktif && !teks) return { error: "Banner yang dinyalakan harus ada teksnya." };
+  // Hanya tautan dalam situs atau http(s). Tanpa ini, `javascript:` bisa
+  // masuk lewat panel admin dan dijalankan di peramban pengunjung.
+  if (tautan && !/^(\/|https?:\/\/)/i.test(tautan)) {
+    return { error: "Tautan harus diawali / untuk halaman dalam situs, atau http:// maupun https://." };
+  }
+
+  await simpanPengaturan("banner", { aktif, teks, tautan });
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/marketing/banner");
+  return { ok: "Banner disimpan." };
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCart } from "./cart-provider";
+import { IkonWa, WaButton } from "./wa-button";
 
 const TABS = [
   { href: "/", label: "Beranda", d: "M4 11 12 4l8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1v-8Z" },
@@ -18,6 +19,8 @@ export function BottomNav({ paketAktif }: { paketAktif: boolean }) {
   // Tab Paket hilang selama kategorinya dimatikan; tanpa ini tab-nya tetap
   // ada tapi membuka katalog kosong.
   const tabs = paketAktif ? TABS : TABS.filter((t) => t.label !== "Paket");
+
+  const kelasTab = "relative flex w-full flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition";
 
   return (
     <nav
@@ -50,6 +53,22 @@ export function BottomNav({ paketAktif }: { paketAktif: boolean }) {
             </li>
           );
         })}
+
+        {/* WhatsApp: bukan tautan, melainkan pembuka formulir prospek yang
+            sama dengan tombol WhatsApp lain di toko — pertanyaannya ikut
+            tercatat di panel admin. Padanan ponsel dari tombol mengambang
+            yang hanya tampil di layar lebar. */}
+        <li className="flex-1">
+          <WaButton
+            pesan="Halo Romlah, saya mau tanya-tanya soal oleh-oleh."
+            sumber="lain"
+            tampilan="polos"
+            className={`${kelasTab} text-wa-2`}
+          >
+            <IkonWa className="h-5 w-5" />
+            WhatsApp
+          </WaButton>
+        </li>
       </ul>
     </nav>
   );

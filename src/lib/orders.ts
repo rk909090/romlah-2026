@@ -1,7 +1,7 @@
 import { randomInt } from "node:crypto";
-import { GRATIS_ONGKIR_MIN } from "@/data/site";
 import { normalkanTelepon } from "./admin/customers";
 import { query, queryOne, transaksi } from "./db";
+import { getPengaturan, ongkirSetelahProgram } from "./settings";
 import { AMBIL_DI_TOKO, hitungOngkir, type Destination } from "./shipping";
 
 export type ItemMasuk = { slug: string; qty: number };
@@ -131,8 +131,12 @@ export async function simpanPesanan(masuk: PesananMasuk): Promise<PesananTersimp
     kurirNama = dipilih.name;
     kurirLayanan = dipilih.service;
     etd = dipilih.etd;
-    // Ambang gratis ongkir juga diterapkan di server, bukan hanya di layar.
-    shippingCost = subtotal >= GRATIS_ONGKIR_MIN ? 0 : dipilih.cost;
+    // Program gratis ongkir diterapkan DI SINI, bukan hanya di layar, dan
+    // memakai fungsi yang sama persis dengan halaman keranjang. Aturannya
+    // dibaca dari basis data supaya perubahan di panel admin langsung
+    // berlaku tanpa deploy ulang.
+    const { gratisOngkir } = await getPengaturan();
+    shippingCost = ongkirSetelahProgram(dipilih.cost, subtotal, gratisOngkir);
   }
 
   const total = subtotal + shippingCost;

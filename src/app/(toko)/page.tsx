@@ -65,9 +65,9 @@ export default async function Beranda() {
               </WaButton>
             </div>
 
-            <p className="mt-5 text-xs text-muted">
-              {SITE.outlets[0].name} · {SITE.outlets[0].hours}
-            </p>
+            {/* Jam buka sengaja tidak di sini — hero untuk mengajak belanja,
+                jamnya lengkap ada di /toko dan di footer. */}
+            <p className="mt-5 text-xs text-muted">{SITE.outlets[0].name}</p>
           </div>
 
           <div className="relative aspect-[4/3] overflow-hidden rounded-3xl border border-line bg-sunken lg:aspect-[5/4]">

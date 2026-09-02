@@ -137,7 +137,7 @@ export default async function HalamanProduk({ params }: Props) {
             Tanya lewat WhatsApp
           </WaButton>
           <p className="mt-2 text-center text-xs text-muted">
-            Dibalas jam {SITE.outlets[0].hours.split(", ")[1] ?? "09.00–17.00"}
+            Dibalas jam buka: {SITE.outlets[0].hours}
           </p>
         </div>
       </div>

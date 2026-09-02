@@ -7,13 +7,45 @@ import { useState } from "react";
 import { SITE } from "@/data/site";
 import { useCart } from "./cart-provider";
 
+/**
+ * Ikon menu utama.
+ *
+ * Digambar sebagai satu path garis, satu gaya untuk semuanya, supaya
+ * ketebalan dan sudutnya seragam dengan ikon keranjang di sebelahnya.
+ */
+const IKON = {
+  // Toples camilan: badan, tutup, dan pita label.
+  katalog: "M7 8h10l-.7 11.1a1 1 0 0 1-1 .9H8.7a1 1 0 0 1-1-.9L7 8Zm-.6-3.2h11.2a.8.8 0 0 1 .8.8v1.6a.8.8 0 0 1-.8.8H6.4a.8.8 0 0 1-.8-.8V5.6a.8.8 0 0 1 .8-.8ZM7.4 13h9.2",
+  // Kotak hadiah berpita.
+  paket: "M3.5 9.5h17v3h-17v-3Zm1 3v7a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-7M12 9.5v11M12 9.5S10.6 4 8.4 4a2 2 0 0 0 0 4m3.6 1.5S13.4 4 15.6 4a2 2 0 0 1 0 4",
+  // Etalase toko: kanopi, badan, dan pintu.
+  toko: "M4 9.5V19a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V9.5M3 9.5 4.8 5a1 1 0 0 1 .9-.6h12.6a1 1 0 0 1 .9.6L21 9.5a2.5 2.5 0 0 1-4.5 1.6 2.5 2.5 0 0 1-4.5 0 2.5 2.5 0 0 1-4.5 0A2.5 2.5 0 0 1 3 9.5ZM10 20v-4.5h4V20",
+} as const;
+
+function IkonNav({ d }: { d: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="h-[18px] w-[18px] shrink-0"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
 export function SiteHeader({ paketAktif }: { paketAktif: boolean }) {
   // Tautan Paket ikut hilang selama kategorinya dimatikan dari panel
   // Marketing — tautan ke kategori mati cuma jalan buntu.
   const nav = [
-    { href: "/katalog", label: "Katalog" },
-    ...(paketAktif ? [{ href: "/katalog?kategori=paket", label: "Paket" }] : []),
-    { href: "/toko", label: "Toko" },
+    { href: "/katalog", label: "Katalog", d: IKON.katalog },
+    ...(paketAktif ? [{ href: "/katalog?kategori=paket", label: "Paket", d: IKON.paket }] : []),
+    { href: "/toko", label: "Toko", d: IKON.toko },
   ];
   const { jumlahItem, ready } = useCart();
   const router = useRouter();
@@ -36,9 +68,14 @@ export function SiteHeader({ paketAktif }: { paketAktif: boolean }) {
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-5 text-sm font-medium text-ink-2 md:flex">
+        <nav className="hidden items-center gap-1 text-sm font-medium text-ink-2 md:flex">
           {nav.map((n) => (
-            <Link key={n.label} href={n.href} className="transition hover:text-jingga">
+            <Link
+              key={n.label}
+              href={n.href}
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition hover:bg-sunken hover:text-jingga"
+            >
+              <IkonNav d={n.d} />
               {n.label}
             </Link>
           ))}

@@ -33,6 +33,13 @@ type Props = {
   lebar?: "penuh" | "inline";
   /** "besar" untuk aksi utama, "kecil" untuk tombol di dalam kartu. */
   ukuran?: "besar" | "kecil";
+  /**
+   * "hijau" memakai gaya tombol WhatsApp bawaan.
+   * "polos" menyerahkan seluruh penataan ke className pemanggil — dipakai
+   * tombol mengambang dan tab di bilah bawah, yang bentuknya jauh berbeda
+   * tapi harus memakai formulir prospek yang sama persis.
+   */
+  tampilan?: "hijau" | "polos";
   className?: string;
 };
 
@@ -55,6 +62,7 @@ export function WaButton({
   children,
   lebar = "penuh",
   ukuran = "besar",
+  tampilan = "hijau",
   className = "",
 }: Props) {
   const [buka, setBuka] = useState(false);
@@ -143,19 +151,22 @@ export function WaButton({
     setIsi(pesan);
   }
 
-  const kelasTombol = [
-    "inline-flex items-center justify-center gap-2 rounded-xl bg-wa font-semibold text-wa-ink shadow-float transition hover:bg-wa-2",
-    lebar === "penuh" ? "flex w-full" : "",
-    ukuran === "besar" ? "px-6 py-3.5 text-sm" : "px-4 py-2 text-xs",
-    className,
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const kelasTombol =
+    tampilan === "polos"
+      ? className
+      : [
+          "inline-flex items-center justify-center gap-2 rounded-xl bg-wa font-semibold text-wa-ink shadow-float transition hover:bg-wa-2",
+          lebar === "penuh" ? "flex w-full" : "",
+          ukuran === "besar" ? "px-6 py-3.5 text-sm" : "px-4 py-2 text-xs",
+          className,
+        ]
+          .filter(Boolean)
+          .join(" ");
 
   return (
     <>
       <button type="button" onClick={bukaPanel} className={kelasTombol}>
-        <IkonWa className={ukuran === "besar" ? "h-4 w-4" : "h-3.5 w-3.5"} />
+        {tampilan === "hijau" && <IkonWa className={ukuran === "besar" ? "h-4 w-4" : "h-3.5 w-3.5"} />}
         {children}
       </button>
 

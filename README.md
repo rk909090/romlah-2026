@@ -32,10 +32,16 @@ dikembalikan ke SSG untuk mempercepatnya.
 
 ## Basis data
 
-MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — sebelas tabel:
+MariaDB 11.8 di Hostinger. Skema ada di `src/db/schema.sql` — dua belas tabel:
 `admin_users`, `admin_sessions`, `categories`, `products`, `product_images`,
 `customers`, `customer_addresses`, `orders`, `order_items`, `package_items`,
-`wa_leads`.
+`wa_leads`, `settings`.
+
+**Server basis datanya berjalan di UTC**, sedangkan tokonya di Jakarta (WIB,
+UTC+7) — diperiksa langsung: `NOW()` sama persis dengan `UTC_TIMESTAMP()`.
+Setiap penyaringan tanggal harus menggeser batasnya 7 jam, kalau tidak pesanan
+jam 6 pagi WIB (tersimpan sebagai 23.00 UTC hari sebelumnya) jatuh ke hari yang
+salah. Seluruh hitungannya terkumpul di `src/lib/admin/rentang.ts`.
 
 **Pelanggan dikunci nomor telepon, bukan email.** Pembeli lewat WhatsApp datang
 membawa nomor; tanpa itu pesanan dari WhatsApp dan dari website tidak akan
@@ -65,6 +71,7 @@ node scripts/biteship-origin.mjs 12530                            # cari ID area
 node scripts/sync-deskripsi.mjs          # bandingkan deskripsi products.json vs DB
 node scripts/sync-deskripsi.mjs --tulis  # dorong deskripsi ke DB (hanya kolom description)
 node --import ./scripts/ts-resolver.mjs scripts/paket-lead-test.mjs # uji paket & prospek WA
+node --import ./scripts/ts-resolver.mjs scripts/rentang-promo-test.mjs # uji rentang tanggal & program
 ```
 
 `midtrans-test.mjs` sengaja TIDAK membuat transaksi apa pun. Pemeriksaan
@@ -127,8 +134,13 @@ Ada di `/admin`, memakai layout terpisah dari toko lewat grup rute `(toko)` dan
 | `/admin/pelanggan` | Daftar pelanggan, dikunci nomor WhatsApp |
 | `/admin/pelanggan/[id]` | Profil lengkap: alamat tersimpan, riwayat pesanan, inquiry WA |
 | `/admin/inquiry` | Prospek dari tombol WhatsApp di toko; ubah status & catatan |
-| `/admin/marketing` | Nyalakan/matikan kategori Paket, dan kelola paket |
+| `/admin/marketing` | Daftar program pemasaran; pilih satu untuk mengaturnya |
+| `/admin/marketing/paket` | Nyalakan/matikan kategori Paket, dan kelola paket |
 | `/admin/marketing/paket/baru`, `/admin/marketing/paket/[id]` | Buat, ubah, hapus paket |
+| `/admin/marketing/ongkir` | Program kirim gratis: nyala/mati, minimal belanja, batas potongan |
+| `/admin/marketing/checkout` | Tampilkan atau sembunyikan tombol "Pesan lewat WhatsApp" |
+| `/admin/marketing/banner` | Banner pengumuman di paling atas toko |
+| `/admin/marketing/ekspor` | Unduh prospek, pelanggan, dan pesanan sebagai CSV |
 | `/admin/pengaturan` | Ganti kata sandi, lihat sesi aktif |
 
 Beberapa keputusan keamanan:
@@ -168,6 +180,32 @@ menyatu di satu baris `customers` dan terlihat bersama di
 Tautan WhatsApp dibuka lewat `<a>` yang benar-benar diklik pengunjung, bukan
 `window.open` sesudah `await` — peramban memblokir jendela yang dibuka setelah
 penantian asinkron.
+
+## Program pemasaran
+
+Semua yang bisa dinyalakan dan dimatikan dari `/admin/marketing` disimpan di
+tabel `settings` sebagai kunci–nilai berisi JSON, bukan kolom tetap: program
+datang dan pergi, dan menambah program baru tidak boleh berarti migrasi skema
+lagi. Setiap pembacaan digabung dengan nilai bawaan di `src/lib/promo.ts`,
+sehingga baris yang belum pernah ditulis — atau yang isinya rusak — tidak
+pernah membuat toko berhenti.
+
+**Kirim gratis** punya dua kriteria: minimal belanja, dan batas rupiah yang
+ditanggung toko. Batas itu bukan hiasan — tanpa batas, kiriman 2 kg ke Papua
+ditanggung penuh berapa pun ongkirnya. Aturannya dihitung oleh satu fungsi,
+`ongkirSetelahProgram()`, yang dipanggil halaman keranjang MAUPUN penyimpan
+pesanan; angka di layar karenanya tidak mungkin berbeda dari yang ditagihkan.
+
+**Tombol checkout** menentukan apakah "Pesan lewat WhatsApp" tampil di
+keranjang. Ada satu penjaga yang tidak bisa dilanggar dari panel: kalau
+Midtrans belum aktif, tombol WhatsApp tetap ditampilkan apa pun isi
+pengaturannya — mematikan keduanya sekaligus membuat keranjang jadi jalan
+buntu tanpa satu pun cara memesan.
+
+**Ekspor CSV** dijaga sesi admin dan memberi BOM UTF-8 supaya Excel di Windows
+tidak mengacak huruf beraksen. Sel yang diawali `=`, `+`, `-`, atau `@` diberi
+kutip di depan: tanpa itu Excel memperlakukannya sebagai rumus, yang membuka
+jalan penyuntikan rumus lewat isian pengunjung.
 
 ## Paket
 

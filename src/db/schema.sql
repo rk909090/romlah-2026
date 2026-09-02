@@ -272,3 +272,18 @@ CREATE TABLE IF NOT EXISTS wa_leads (
   CONSTRAINT fk_wa_leads_customer FOREIGN KEY (customer_id)
     REFERENCES customers (id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ── Pengaturan toko ───────────────────────────────────────────────────
+-- Satu baris per pengaturan, isinya JSON. Dipilih bentuk kunci–nilai, bukan
+-- satu tabel berkolom tetap, karena pengaturan pemasaran datang dan pergi:
+-- menambah program baru tidak boleh berarti migrasi skema lagi.
+--
+-- Kolomnya sengaja bernama setting_key, bukan `key`: KEY adalah kata kunci
+-- MySQL dan harus dikutip di setiap kueri kalau dipakai apa adanya.
+CREATE TABLE IF NOT EXISTS settings (
+  setting_key VARCHAR(64) NOT NULL,
+  value       TEXT        NOT NULL,
+  updated_at  DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP
+                          ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (setting_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

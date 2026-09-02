@@ -34,6 +34,8 @@ export type ShippingRate = {
   etd: string;
 };
 
+import { SITE } from "@/data/site";
+
 const BASE = "https://api.biteship.com";
 
 /**
@@ -249,12 +251,17 @@ export async function hitungOngkir(tujuan: Destination, beratGram: number): Prom
     .sort((a, b) => a.cost - b.cost);
 }
 
-/** Opsi ambil sendiri di outlet — tidak melibatkan kurir sama sekali. */
+/**
+ * Opsi ambil sendiri di outlet — tidak melibatkan kurir sama sekali.
+ *
+ * Jam bukanya diambil dari SITE, bukan diketik ulang: dua tempat yang
+ * menyebut jam buka pasti melenceng cepat atau lambat.
+ */
 export const AMBIL_DI_TOKO: ShippingRate = {
   code: "pickup",
   name: "Ambil di toko",
   service: "Tanjung Barat",
-  description: "Senin–Minggu, 09.00–17.00",
+  description: SITE.outlets[0].hours,
   cost: 0,
   etd: "Siap 2 jam",
 };

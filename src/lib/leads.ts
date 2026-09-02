@@ -110,7 +110,23 @@ const petakan = (b: BarisLead): Lead => ({
   createdAt: b.created_at,
 });
 
-export async function listLeads(f: { q?: string; status?: string } = {}): Promise<Lead[]> {
+export type SaringLead = {
+  q?: string;
+  status?: string;
+  /** Batas bawah UTC, inklusif. */
+  mulaiUtc?: string;
+  /** Batas atas UTC, EKSKLUSIF. */
+  sebelumUtc?: string;
+};
+
+/**
+ * Bangun WHERE sekali, dipakai daftar maupun hitungan.
+ *
+ * Dipisah supaya ringkasan angka tidak mungkin memakai saringan yang berbeda
+ * dari tabel di bawahnya — dua kueri dengan syarat yang menyimpang adalah
+ * cara paling halus untuk memajang angka yang bohong.
+ */
+function bangunSyarat(f: SaringLead): { where: string; nilai: SqlParam[] } {
   const syarat: string[] = [];
   const nilai: SqlParam[] = [];
 
@@ -123,12 +139,29 @@ export async function listLeads(f: { q?: string; status?: string } = {}): Promis
     syarat.push("status = ?");
     nilai.push(f.status);
   }
+  // Batasnya sudah dalam UTC dan batas atas EKSKLUSIF; lihat
+  // lib/admin/rentang.ts untuk alasan pergeseran WIB→UTC-nya.
+  if (f.mulaiUtc) {
+    syarat.push("created_at >= ?");
+    nilai.push(f.mulaiUtc);
+  }
+  if (f.sebelumUtc) {
+    syarat.push("created_at < ?");
+    nilai.push(f.sebelumUtc);
+  }
 
-  const where = syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "";
+  return { where: syarat.length ? ` WHERE ${syarat.join(" AND ")}` : "", nilai };
+}
+
+/** Batas baris yang diambil sekaligus. Hitungannya TIDAK ikut dibatasi ini. */
+export const BATAS_DAFTAR_LEAD = 300;
+
+export async function listLeads(f: SaringLead = {}): Promise<Lead[]> {
+  const { where, nilai } = bangunSyarat(f);
   const baris = await query<BarisLead>(
     `SELECT id, customer_id, name, phone, email, message, source, product_slug,
             page_path, status, admin_note, created_at
-       FROM wa_leads${where} ORDER BY created_at DESC LIMIT 500`,
+       FROM wa_leads${where} ORDER BY created_at DESC LIMIT ${BATAS_DAFTAR_LEAD}`,
     nilai,
   );
   return baris.map(petakan);
@@ -179,5 +212,30 @@ export async function hitungLead(): Promise<{ total: number; baru: number; mingg
     total: Number(b?.total ?? 0),
     baru: Number(b?.baru ?? 0),
     mingguIni: Number(b?.mingguIni ?? 0),
+  };
+}
+
+/**
+ * Angka ringkas untuk satu saringan.
+ *
+ * Dihitung dengan COUNT di basis data, BUKAN dari hasil listLeads() — daftar
+ * itu dipotong di BATAS_DAFTAR_LEAD, dan menghitung darinya akan memajang
+ * angka yang mentok di batas tanpa ada yang menyadarinya.
+ */
+export async function hitungLeadRentang(
+  f: SaringLead,
+): Promise<{ total: number; baru: number; jadiPesanan: number }> {
+  const { where, nilai } = bangunSyarat(f);
+  const b = await queryOne<{ total: number; baru: number; jadiPesanan: number }>(
+    `SELECT COUNT(*) AS total,
+            COALESCE(SUM(status = 'baru'), 0) AS baru,
+            COALESCE(SUM(status = 'jadi_pesanan'), 0) AS jadiPesanan
+       FROM wa_leads${where}`,
+    nilai,
+  );
+  return {
+    total: Number(b?.total ?? 0),
+    baru: Number(b?.baru ?? 0),
+    jadiPesanan: Number(b?.jadiPesanan ?? 0),
   };
 }

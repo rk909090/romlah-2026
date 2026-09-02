@@ -27,7 +27,7 @@ export const SITE = {
     {
       name: "Swadaya Tanjung Barat",
       address: "Jl. Swadaya 2 No. 20B, Tanjung Barat, Jakarta Selatan 12530",
-      hours: "Senin–Minggu, 09.00–17.00",
+      hours: "Senin–Minggu, 08.00–20.00",
       isOpen: true,
     },
   ],
@@ -101,5 +101,5 @@ export const analitikAktif =
  */
 export const TESTIMONIALS: Testimonial[] = [];
 
-/** Ambang gratis ongkir — angka sementara, menunggu data rata-rata nilai pesanan. */
-export const GRATIS_ONGKIR_MIN = 250_000;
+// Ambang gratis ongkir sudah pindah ke basis data dan diatur dari
+// /admin/marketing/ongkir. Nilai bawaannya ada di lib/promo.ts.

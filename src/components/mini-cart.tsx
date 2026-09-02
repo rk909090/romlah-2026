@@ -4,8 +4,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { GRATIS_ONGKIR_MIN } from "@/data/site";
 import { berat, rupiah } from "@/lib/format";
+import { kurangGratisOngkir, type GratisOngkir } from "@/lib/promo";
 import { useCart } from "./cart-provider";
 
 /**
@@ -33,7 +33,7 @@ type Ringkas = {
   image: { src: string; alt: string } | null;
 };
 
-export function MiniCart() {
+export function MiniCart({ gratisOngkir }: { gratisOngkir: GratisOngkir }) {
   const { lines, miniBuka, miniTerakhir, tutupMini, ubahQty, jumlahItem } = useCart();
   const pathname = usePathname();
   const [produk, setProduk] = useState<Record<string, Ringkas>>({});
@@ -92,7 +92,7 @@ export function MiniCart() {
   const baris = lines.map((l) => ({ ...l, p: produk[l.slug] }));
   const subtotal = baris.reduce((n, b) => n + (b.p ? b.p.price * b.qty : 0), 0);
   const lengkap = baris.every((b) => b.p);
-  const kurangGratis = Math.max(0, GRATIS_ONGKIR_MIN - subtotal);
+  const kurangGratis = kurangGratisOngkir(subtotal, gratisOngkir);
   const baru = miniTerakhir ? produk[miniTerakhir] : undefined;
 
   return (
@@ -208,7 +208,10 @@ export function MiniCart() {
               <span className="tabular text-lg font-extrabold">{lengkap ? rupiah(subtotal) : "…"}</span>
             </div>
 
-            {lengkap && (
+            {/* Hanya disebut kalau programnya memang sedang berjalan —
+                menjanjikan gratis ongkir yang tidak ada itu lebih buruk
+                daripada tidak menjanjikan apa pun. */}
+            {lengkap && gratisOngkir.aktif && (
               <p className="mt-1 text-xs text-muted">
                 {kurangGratis > 0
                   ? `Belanja ${rupiah(kurangGratis)} lagi untuk gratis ongkir.`

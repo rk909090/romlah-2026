@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AdminHeading } from "@/components/admin/admin-shell";
+import { DateFilter } from "@/components/admin/date-filter";
 import { LeadForm } from "@/components/admin/lead-form";
 import { IkonWa } from "@/components/wa-button";
 import { tampilkanTelepon } from "@/lib/admin/customers";
@@ -9,7 +10,8 @@ import {
   STATUS_LEAD,
   WARNA_STATUS_LEAD,
 } from "@/lib/lead-status";
-import { hitungLead, listLeads } from "@/lib/leads";
+import { bacaRentang } from "@/lib/admin/rentang";
+import { hitungLeadRentang, listLeads } from "@/lib/leads";
 
 export const metadata = { title: "Inquiry WA" };
 export const dynamic = "force-dynamic";
@@ -30,16 +32,23 @@ function Chip({ aktif, href, children }: { aktif: boolean; href: string; childre
 export default async function Inquiry({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<{ q?: string; status?: string; rentang?: string; dari?: string; sampai?: string }>;
 }) {
   const sp = await searchParams;
-  const [leads, hitung] = await Promise.all([
-    listLeads({ q: sp.q, status: sp.status }),
-    hitungLead(),
-  ]);
+  const r = bacaRentang(sp);
+
+  // Saringan yang sama persis dipakai daftar dan ringkasan angkanya.
+  const saring = { q: sp.q, status: sp.status, mulaiUtc: r.mulaiUtc, sebelumUtc: r.sebelumUtc };
+  const [leads, hitung] = await Promise.all([listLeads(saring), hitungLeadRentang(saring)]);
+
+  const adaSaringan = r.aktif || Boolean(sp.q) || Boolean(sp.status);
 
   const qs = (patch: Record<string, string | undefined>) => {
-    const next = { q: sp.q, status: sp.status, ...patch };
+    const next = {
+      q: sp.q, status: sp.status,
+      rentang: sp.rentang, dari: sp.dari, sampai: sp.sampai,
+      ...patch,
+    };
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(next)) if (v) p.set(k, v);
     const s = p.toString();
@@ -53,21 +62,27 @@ export default async function Inquiry({
         description="Pertanyaan yang masuk lewat tombol WhatsApp di toko. Pesanan sungguhan ada di menu Pesanan."
       />
 
+      <DateFilter basePath="/admin/inquiry" r={r} lain={{ q: sp.q, status: sp.status }} />
+
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         {[
-          { label: "Total prospek", nilai: hitung.total },
-          { label: "Belum ditindaklanjuti", nilai: hitung.baru },
-          { label: "Masuk 7 hari terakhir", nilai: hitung.mingguIni },
+          { label: "Prospek", nilai: hitung.total, catatan: r.label },
+          { label: "Belum ditindaklanjuti", nilai: hitung.baru, catatan: "Berstatus baru" },
+          { label: "Jadi pesanan", nilai: hitung.jadiPesanan, catatan: "Ditandai manual" },
         ].map((k) => (
           <div key={k.label} className="rounded-2xl border border-line bg-surface p-4 shadow-card">
             <p className="text-xs font-semibold tracking-wider text-muted uppercase">{k.label}</p>
             <p className="tabular mt-1 text-2xl font-extrabold">{k.nilai}</p>
+            <p className="mt-0.5 text-xs text-muted">{k.catatan}</p>
           </div>
         ))}
       </div>
 
       <form method="get" className="mb-3">
         {sp.status && <input type="hidden" name="status" value={sp.status} />}
+        {sp.rentang && <input type="hidden" name="rentang" value={sp.rentang} />}
+        {sp.dari && <input type="hidden" name="dari" value={sp.dari} />}
+        {sp.sampai && <input type="hidden" name="sampai" value={sp.sampai} />}
         <input
           name="q"
           defaultValue={sp.q ?? ""}
@@ -90,9 +105,9 @@ export default async function Inquiry({
       {leads.length === 0 ? (
         <div className="rounded-2xl border border-line bg-surface p-10 text-center shadow-card">
           <p className="font-display text-lg font-bold">
-            {sp.q || sp.status ? "Tidak ada yang cocok" : "Belum ada prospek masuk"}
+            {adaSaringan ? "Tidak ada yang cocok" : "Belum ada prospek masuk"}
           </p>
-          {sp.q || sp.status ? (
+          {adaSaringan ? (
             <Link href="/admin/inquiry" className="mt-3 inline-block text-sm font-medium text-jingga hover:underline">
               Tampilkan semua
             </Link>
@@ -132,7 +147,17 @@ export default async function Inquiry({
                 </div>
 
                 <div className="text-right text-xs text-muted">
-                  <p>{new Date(l.createdAt).toLocaleString("id-ID")}</p>
+                  {/* Ditampilkan dalam WIB; kolomnya tersimpan dalam UTC. */}
+                  <p>
+                    {new Date(l.createdAt).toLocaleString("id-ID", {
+                      timeZone: "Asia/Jakarta",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </p>
                   <p className="mt-0.5">{LABEL_SUMBER[l.source] ?? l.source}</p>
                   {l.productSlug && (
                     <Link
@@ -168,6 +193,13 @@ export default async function Inquiry({
             </li>
           ))}
         </ul>
+      )}
+
+      {hitung.total > leads.length && (
+        <p className="mt-3 text-center text-xs text-muted">
+          Menampilkan {leads.length} terbaru dari {hitung.total} prospek. Persempit periodenya untuk
+          melihat sisanya.
+        </p>
       )}
     </>
   );

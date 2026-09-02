@@ -4,8 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { bayarSekarang, buatPesanan, type HasilPesanan } from "@/app/(toko)/actions";
-import { GRATIS_ONGKIR_MIN } from "@/data/site";
 import { berat, rupiah } from "@/lib/format";
+import {
+  kurangGratisOngkir,
+  memenuhiGratisOngkir,
+  ongkirSetelahProgram,
+  type GratisOngkir,
+} from "@/lib/promo";
 import type { Destination, ShippingRate } from "@/lib/shipping";
 import type { Product } from "@/lib/types";
 import { resolveLines, useCart } from "./cart-provider";
@@ -17,11 +22,17 @@ export function CartView({
   products,
   bayarAktif,
   ongkirContoh,
+  gratisOngkir,
+  tombolWa,
 }: {
   products: Product[];
   bayarAktif: boolean;
   /** true bila kredensial Biteship belum lengkap, sehingga tarif masih contoh. */
   ongkirContoh: boolean;
+  /** Program gratis ongkir, dari panel admin. */
+  gratisOngkir: GratisOngkir;
+  /** Tampilkan tombol "Pesan lewat WhatsApp". Diatur dari panel admin. */
+  tombolWa: boolean;
 }) {
   const { lines, ready, ubahQty, hapus, kosongkan } = useCart();
   const items = useMemo(() => resolveLines(lines, products), [lines, products]);
@@ -110,10 +121,15 @@ export function CartView({
     "mt-1.5 w-full rounded-xl border border-line bg-bg px-4 py-3 text-sm focus:border-jingga focus:outline-none";
   const kelasLabel = "text-xs font-semibold tracking-wide text-muted uppercase";
 
-  const gratisOngkir = subtotal >= GRATIS_ONGKIR_MIN;
-  const ongkir = pilihTarif ? (gratisOngkir && pilihTarif.code !== "pickup" ? 0 : pilihTarif.cost) : 0;
+  // Dihitung lewat fungsi yang sama persis dengan yang dipakai server saat
+  // menyimpan pesanan, jadi angka di layar tidak mungkin berbeda dari yang
+  // ditagihkan.
+  const ongkir = pilihTarif
+    ? ongkirSetelahProgram(pilihTarif.cost, subtotal, gratisOngkir, pilihTarif.code === "pickup")
+    : 0;
   const total = subtotal + ongkir;
-  const kurang = Math.max(0, GRATIS_ONGKIR_MIN - subtotal);
+  const kurang = kurangGratisOngkir(subtotal, gratisOngkir);
+  const sudahGratis = memenuhiGratisOngkir(subtotal, gratisOngkir);
 
   // Alamat lengkap wajib untuk pengiriman kurir: tanpa nama jalan, paketnya
   // tidak bisa diantar. Ambil di toko tidak memerlukannya.
@@ -510,18 +526,29 @@ export function CartView({
         <div className="rounded-2xl border border-line bg-surface p-5">
           <h2 className="font-display text-lg font-bold">Ringkasan</h2>
 
-          {!gratisOngkir && (
+          {/* Ajakan gratis ongkir hanya muncul kalau programnya memang nyala. */}
+          {gratisOngkir.aktif && !sudahGratis && (
             <div className="mt-4 rounded-xl bg-jingga-soft p-3.5">
               <p className="text-xs font-medium text-jingga">
-                Tambah {rupiah(kurang)} lagi untuk gratis ongkir
+                {gratisOngkir.pesan || `Tambah ${rupiah(kurang)} lagi untuk gratis ongkir`}
               </p>
               <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
                 <div
                   className="h-full rounded-full bg-jingga transition-all"
-                  style={{ width: `${Math.min(100, (subtotal / GRATIS_ONGKIR_MIN) * 100)}%` }}
+                  style={{
+                    width: `${Math.min(100, gratisOngkir.minBelanja > 0 ? (subtotal / gratisOngkir.minBelanja) * 100 : 100)}%`,
+                  }}
                 />
               </div>
             </div>
+          )}
+
+          {gratisOngkir.aktif && sudahGratis && (
+            <p className="mt-4 rounded-xl bg-pandan-soft px-3.5 py-3 text-xs font-medium text-pandan">
+              {gratisOngkir.maksPotongan > 0
+                ? `Ongkir ditanggung sampai ${rupiah(gratisOngkir.maksPotongan)}`
+                : "Belanja ini sudah gratis ongkir"}
+            </p>
           )}
 
           <dl className="mt-4 space-y-2 text-sm">
@@ -552,15 +579,17 @@ export function CartView({
             >
               {membayar ? "Menyiapkan pembayaran…" : "Bayar sekarang · QRIS, VA, kartu"}
             </button>
-            <button
-              type="button"
-              disabled={!bisaPesan || mengirim}
-              onClick={kirimPesanan}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-wa px-5 py-4 text-sm font-semibold text-wa-ink shadow-float transition hover:bg-wa-2 disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              <IkonWa />
-              {mengirim ? "Menyimpan pesanan…" : "Pesan lewat WhatsApp"}
-            </button>
+            {tombolWa && (
+              <button
+                type="button"
+                disabled={!bisaPesan || mengirim}
+                onClick={kirimPesanan}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-wa px-5 py-4 text-sm font-semibold text-wa-ink shadow-float transition hover:bg-wa-2 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                <IkonWa />
+                {mengirim ? "Menyimpan pesanan…" : "Pesan lewat WhatsApp"}
+              </button>
+            )}
 
             {galat && (
               <p role="alert" className="rounded-xl border border-jingga/40 bg-jingga-soft px-4 py-3 text-xs text-ink-2">
@@ -574,9 +603,11 @@ export function CartView({
           </p>
 
           <p className="mt-4 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-            {bayarAktif
-              ? "Bayar sekarang membuka halaman pembayaran Midtrans. Lewat WhatsApp, pesanan tetap tercatat dan pembayarannya diatur bersama admin."
-              : "Pembayaran online belum aktif. Pesanan diselesaikan lewat WhatsApp — rinciannya sudah tersusun rapi."}
+            {!bayarAktif
+              ? "Pembayaran online belum aktif. Pesanan diselesaikan lewat WhatsApp — rinciannya sudah tersusun rapi."
+              : tombolWa
+                ? "Bayar sekarang membuka halaman pembayaran Midtrans. Lewat WhatsApp, pesanan tetap tercatat dan pembayarannya diatur bersama admin."
+                : "Pembayaran diproses lewat Midtrans: QRIS, transfer virtual account, atau kartu. Ada pertanyaan sebelum bayar? Pakai tombol WhatsApp di pojok layar."}
           </p>
         </div>
       </aside>
