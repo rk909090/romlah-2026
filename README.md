@@ -471,6 +471,39 @@ Tiga hal yang membuat build pertama gagal, dan cara mengatasinya:
 Lockfile tetap `lockfileVersion: 9.0` — format itu dibaca pnpm 11 tanpa
 masalah; kegagalannya dulu murni soal kebijakan, bukan format.
 
+### Build memakai webpack, bukan Turbopack
+
+`pnpm build` menjalankan `next build --webpack`. Ini **bukan** selera, dan
+bukan pula karena ada yang salah di kode.
+
+Sejak 12 September 2026 build Turbopack di Hostinger selalu panik di titik
+yang sama:
+
+    FATAL: An unexpected Turbopack error occurred.
+    Failed to write app endpoint /icon.png/route
+    Caused by:
+    - [project]/src/app/globals.css [app-client] (css)
+    - Execution of evaluate_webpack_loader failed
+    - creating new process
+    - node process exited before we could connect to it with exit status: 0
+
+Turbopack menjalankan loader PostCSS — yang dipakai Tailwind 4 lewat
+`@tailwindcss/postcss` — di **proses Node terpisah**. Di kotak build Hostinger
+proses anak itu mati seketika dengan status 0 sebelum sempat tersambung, jadi
+CSS-nya tidak pernah selesai diolah dan seluruh build batal. Komitnya sama
+persis dengan yang pernah berhasil dibangun 2 September, jadi yang berubah
+lingkungannya, bukan kodenya. Diulang dua kali (25 dan 28 September), gagal
+dengan jejak yang identik.
+
+webpack memanggil loader yang sama **di dalam prosesnya sendiri**, tanpa
+menelurkan proses baru, sehingga batas itu tidak pernah tersentuh.
+
+`pnpm dev` tetap memakai Turbopack — kendalanya hanya ada di kotak build
+Hostinger, tidak di mesin pengembang.
+
+Kalau suatu saat Hostinger melonggarkan batasnya, `--webpack` bisa dilepas
+lagi; jalankan satu build percobaan dan pastikan lolos sebelum melepasnya.
+
 ## Belum dibuat
 
 `/cerita`, `/reseller`, `/blog` — menunggu keputusan pemilik soal nasib 15
