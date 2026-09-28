@@ -504,37 +504,39 @@ Hostinger, tidak di mesin pengembang.
 Kalau suatu saat Hostinger melonggarkan batasnya, `--webpack` bisa dilepas
 lagi; jalankan satu build percobaan dan pastikan lolos sebelum melepasnya.
 
-### `@swc/helpers` dipasang sebagai dependensi langsung
+### Tata letak node_modules dipaksa *hoisted*
 
-Ia sudah menjadi dependensi `next` dan tidak dipakai satu baris pun oleh kode
-kita. Ia ada di `dependencies` semata-mata supaya letaknya di **akar**
-`node_modules`.
-
-Di Hostinger, `node_modules/next` ternyata bukan symlink ke `.pnpm` melainkan
-direktori sungguhan — jejak `require` membuktikannya: satu bingkai menyebut
-`node_modules/next/dist/client/lib/console.js`, bingkai lain menyebut
-`node_modules/.pnpm/next@16.3.4_.../node_modules/next/dist/server/require.js`.
-Kalau yang pertama symlink, Node akan mencetak jalur `.pnpm`-nya juga.
-
-Akibatnya pencarian modul dari dalam `node_modules/next/dist/...` naik ke
-`node_modules/` dan berhenti di situ — tidak pernah masuk ke
-`.pnpm/next@.../node_modules/` tempat `@swc/helpers` sebenarnya berada. Itulah
-yang membuat setiap render membalas 500:
+`pnpm-workspace.yaml` menyetel `nodeLinker: hoisted`. Tanpa itu situs membalas
+500 di setiap permintaan, walaupun build-nya sukses:
 
     Cannot find module '@swc/helpers/_/_interop_require_default'
 
-Sebagai dependensi langsung, pnpm menaruhnya di akar `node_modules`, dan
-pencarian tadi menemukannya. Versinya **dipatok 0.5.23**, sama persis dengan
-yang diminta `next@16.3.4`; menaikkannya sendiri berarti memberi Next versi
-helper yang bukan versi ujinya.
+`@swc/helpers` adalah dependensi dalam milik `next`, tidak dipakai kode kita
+sama sekali. Jejak `require` memperlihatkan duduk perkaranya:
 
-Di mesin pengembang gejalanya tidak pernah muncul karena node_modules di sini
-bertata letak *hoisted* — semuanya sudah rata di akar sejak awal.
+    - .../nodejs/node_modules/next/dist/client/lib/console.js
+    - .../nodejs/node_modules/next/dist/compiled/next-server/app-page.runtime.prod.js
+    - .../nodejs/.next/server/app/(toko)/page.js
+    - .../nodejs/node_modules/.pnpm/next@16.3.4_.../node_modules/next/dist/server/require.js
+    - .../nodejs/server.js
 
-Kalau kelak ada modul dalam Next yang lain menghilang dengan galat serupa,
-jangan tambal satu per satu: setel `nodeLinker: hoisted` di
-`pnpm-workspace.yaml` supaya tata letak di server sama dengan yang terbukti
-jalan di lokal.
+Dua bingkai menyebut `next` lewat jalur yang berbeda. Node selalu mencetak
+jalur yang sudah dipecahkan, jadi kalau `node_modules/next` sebuah symlink
+keduanya akan menyebut `.pnpm`. Artinya di server `node_modules/next` adalah
+direktori sungguhan, sementara tautan-tautan lain di akar `node_modules` tidak
+ikut terbawa saat Hostinger memasang versi barunya. Pencarian modul dari dalam
+`node_modules/next/dist/...` naik ke `node_modules/`, tidak menemukan apa pun,
+dan berhenti — tidak pernah menengok `.pnpm/next@.../node_modules/`.
+
+Mendeklarasikan `@swc/helpers` sebagai dependensi langsung **sudah dicoba dan
+tidak menolong**: di tata letak pnpm bawaan ia pun hanya jadi symlink di akar,
+dan symlink itulah yang hilang. Perbaikannya harus menghapus symlink-nya sama
+sekali.
+
+Dengan `hoisted`, seluruh paket menjadi direktori sungguhan di akar
+`node_modules`, persis seperti npm — tidak ada tautan yang bisa raib. Ini juga
+tata letak yang dipakai mesin pengembang, dan itu menjelaskan kenapa gejalanya
+tidak pernah muncul di lokal.
 
 ## Belum dibuat
 

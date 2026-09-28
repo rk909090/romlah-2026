@@ -1,3 +1,15 @@
+# nodeLinker
+#   Hostinger MEMBUANG symlink saat memasang hasil build: di server,
+#   node_modules/next adalah direktori sungguhan, sedangkan tautan ke paket
+#   lain di akar node_modules tidak ikut terbawa. Akibatnya modul dalam milik
+#   Next (@swc/helpers) tidak bisa ditemukan dan setiap render membalas 500.
+#
+#   Dengan tata letak hoisted seluruh paket menjadi direktori sungguhan di
+#   akar node_modules — persis seperti npm — sehingga tidak ada symlink yang
+#   bisa hilang. Ini juga tata letak yang dipakai mesin pengembang, tempat
+#   aplikasinya memang selalu jalan.
+nodeLinker: hoisted
+
 # Disetel agar cocok dengan lingkungan build Hostinger: pnpm 11.25.0 yang
 # dijalankan lewat corepack di Node 22.
 #
